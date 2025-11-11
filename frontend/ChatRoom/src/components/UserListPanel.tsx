@@ -123,7 +123,7 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
   const onlineUsers = users.filter(user => user.status === 'online');
 
   return (
-    <div className="w-64 bg-gray-900 flex flex-col border-l border-gray-800">
+    <div className="h-full w-64 bg-gray-900 flex flex-col border-l border-gray-800">
       {/* 在线用户头像区 */}
       <div className="px-6 pt-5 border-gray-800">
         <div className="flex justify-between items-center ">

@@ -20,7 +20,7 @@ export default {
       },
       fontSize:{
         'max':'2.6rem', // 42px
-        'name':'1.6rem', //32px
+        'name':'1.4rem', //29px
         'logo':'1.4rem' // 29px
       }
     },

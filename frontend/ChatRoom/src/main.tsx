@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import './index.css'
 import '@fortawesome/fontawesome-free/css/all.min.css'
+// @ts-ignore
 import 'swiper/css'
+// @ts-ignore
 import 'swiper/css/pagination'
 import App from './App.tsx'
 import Login from './pages/Login.tsx'

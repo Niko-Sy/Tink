@@ -311,7 +311,7 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
 
               <button
                 onClick={handleCreate}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors focus:outline-none mt-4 bg-transparent border-0"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors focus:outline-none mt-4  border-0"
               >
                 <PlusOutlined className="mr-2" />
                 创建聊天室

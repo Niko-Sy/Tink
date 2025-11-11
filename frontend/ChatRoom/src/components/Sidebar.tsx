@@ -249,7 +249,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               {!isRoomListCollapsed && showText && (
                 <div className="flex-1 min-w-0 mr-2">
                   <div className="text-name  text-white truncate">
-                    {user?.username || '张伟'}
+                    {user?.username || '张伟'} 
+                    <span className="text-xs text-gray-300 ml-1">的聊天室</span>
                   </div>
                 </div>
               )}

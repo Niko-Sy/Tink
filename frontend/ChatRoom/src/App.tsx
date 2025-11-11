@@ -308,13 +308,14 @@ const App: React.FC = () => {
             
             {/* 右侧操作按钮组 */}
             <div className="flex items-center space-x-2">
-              <button
-                className="p-2 hover:bg-gray-800 rounded-lg transition-colors focus:outline-none bg-transparent text-gray-400 hover:text-white"
-                onClick={() => setShowSettingsModal(true)}
-                title="聊天室设置"
-              >
-                <SettingOutlined className="text-lg" />
-              </button>
+              {activeChatRoom != 1 && (
+                <button
+                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors focus:outline-none bg-transparent text-gray-400 hover:text-white"
+                  onClick={() => setShowSettingsModal(true)}
+                  title="聊天室设置"
+                >
+                  <SettingOutlined className="text-lg" />
+              </button>)}
               <button
                 className="p-2 hover:bg-gray-800 rounded-lg transition-colors focus:outline-none bg-transparent text-gray-400 hover:text-white"
                 onClick={() => setShowUserPanel(!showUserPanel)}

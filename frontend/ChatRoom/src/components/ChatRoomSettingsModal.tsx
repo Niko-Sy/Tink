@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { CloseOutlined, SaveOutlined } from '@ant-design/icons';
 
 interface ChatRoomSettingsModalProps {
@@ -29,6 +29,20 @@ const ChatRoomSettingsModal: React.FC<ChatRoomSettingsModalProps> = ({
     icon: '',
     password: ''
   });
+  const passwordSectionRef = useRef<HTMLDivElement>(null);
+
+  // 当类型改为protected时,自动滚动到密码输入区域
+  useEffect(() => {
+    if (formData.type === 'protected' && passwordSectionRef.current) {
+      // 延迟一小段时间以确保DOM已更新
+      setTimeout(() => {
+        passwordSectionRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'nearest' 
+        });
+      }, 100);
+    }
+  }, [formData.type]);
 
   // 图标选项
   const iconOptions = [
@@ -244,7 +258,7 @@ const ChatRoomSettingsModal: React.FC<ChatRoomSettingsModalProps> = ({
 
           {/* 访问密码（仅在受保护类型时显示） */}
           {formData.type === 'protected' && (
-            <div>
+            <div ref={passwordSectionRef}>
               <label className="block text-sm font-medium text-gray-300 mb-2">
                 访问密码 *
               </label>
@@ -256,6 +270,7 @@ const ChatRoomSettingsModal: React.FC<ChatRoomSettingsModalProps> = ({
                   errors.password ? 'focus:ring-red-500 border border-red-500' : 'focus:ring-blue-500'
                 }`}
                 placeholder="设置聊天室访问密码（至少6位）"
+                autoFocus
               />
               {errors.password && (
                 <p className="mt-1 text-sm text-red-500">{errors.password}</p>
