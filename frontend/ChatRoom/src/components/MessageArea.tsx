@@ -1,20 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-
-interface User {
-  id: number;
-  name: string;
-  status: string;
-  avatar: string;
-}
-
-interface Message {
-  id: number;
-  userId: number;
-  userName: string;
-  text: string;
-  time: string;
-  isOwn: boolean;
-}
+import type { User, Message } from '../types';
 
 interface MessageAreaProps {
   messages: Message[];
@@ -26,7 +11,7 @@ interface ContextMenu {
   y: number;
   type: 'message' | 'avatar' | 'ownavatar';
   messageId?: number;
-  userId?: number;
+  userId?: string; // 改为string类型
   isOwn?: boolean;
 }
 
@@ -115,7 +100,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
   };
 
   // 处理用户头像右键菜单
-  const handleAvatarClick = (e: React.MouseEvent, userId: number) => {
+  const handleAvatarClick = (e: React.MouseEvent, userId: string) => {
     e.preventDefault();
     e.stopPropagation();
     const position = calculateMenuPosition(e.clientX, e.clientY, 'avatar');
@@ -126,7 +111,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
       userId
     });
   };
-  const handleAvatarOwnClick = (e: React.MouseEvent, userId: number) => {
+  const handleAvatarOwnClick = (e: React.MouseEvent, userId: string) => {
     e.preventDefault();
     e.stopPropagation();
     const position = calculateMenuPosition(e.clientX, e.clientY, 'ownavatar');
@@ -202,7 +187,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
                 onClick={(e) => handleAvatarClick(e, message.userId)}
               >
                 <img
-                  src={users.find(u => u.id === message.userId)?.avatar}
+                  src={users.find(u => u.userId === message.userId)?.avatar}
                   alt={message.userName}
                   className="w-8 h-8 rounded-full object-cover cursor-pointer"
                 />
@@ -236,7 +221,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
                 onClick={(e) => handleAvatarOwnClick(e, message.userId)}
               >
                 <img
-                  src={users.find(u => u.id === message.userId)?.avatar}
+                  src={users.find(u => u.userId === message.userId)?.avatar}
                   alt={message.userName}
                   className="w-8 h-8 rounded-full object-cover cursor-pointer"
                 />
@@ -338,7 +323,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
               <button
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
                 onClick={() => {
-                  const user = users.find(u => u.id === contextMenu.userId);
+                  const user = users.find(u => u.userId === contextMenu.userId);
                   if (user) {
                     console.log('查看用户信息:', user);
                   }

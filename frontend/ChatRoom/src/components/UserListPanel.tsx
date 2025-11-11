@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
-
-interface User {
-  id: number;
-  name: string;
-  status: string;
-  avatar: string;
-}
+import { useNavigate } from 'react-router-dom';
+import type { User } from '../types';
 
 interface UserListPanelProps {
   users: User[];
@@ -15,10 +10,11 @@ interface UserListPanelProps {
 interface ContextMenu {
   x: number;
   y: number;
-  userId: number;
+  userId: string; // 改为string类型
 }
 
 const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
 
@@ -73,7 +69,7 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
   };
 
   // 处理用户点击
-  const handleUserClick = (e: React.MouseEvent, userId: number) => {
+  const handleUserClick = (e: React.MouseEvent, userId: string) => {
     e.preventDefault();
     e.stopPropagation();
     const position = calculateMenuPosition(e.clientX, e.clientY);
@@ -85,10 +81,10 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
   };
 
   // 处理菜单操作
-  const handleMenuAction = (action: string, userId: number) => {
+  const handleMenuAction = (action: string, userId: string) => {
     console.log(`执行操作: ${action}`, userId);
     setContextMenu(null);
-    const user = users.find(u => u.id === userId);
+    const user = users.find(u => u.userId === userId);
     
     switch(action) {
       case 'privateMessage':
@@ -99,6 +95,8 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
         break;
       case 'viewProfile':
         console.log('查看用户资料:', user);
+        // 跳转到用户资料页面
+        navigate(`/user/${userId}`);
         break;
       case 'report':
         console.log('举报用户:', user);
@@ -155,9 +153,9 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
         {sortedUsers.length > 0 ? (
           sortedUsers.map(user => (
             <div 
-              key={user.id} 
+              key={user.userId} 
               className="flex items-center mx-2 my-1 px-4 py-2 hover:bg-gray-800 transition-colors cursor-pointer rounded-list"
-              onClick={(e) => handleUserClick(e, user.id)}
+              onClick={(e) => handleUserClick(e, user.userId)}
             >
               <div className="relative mr-3">
                 <img

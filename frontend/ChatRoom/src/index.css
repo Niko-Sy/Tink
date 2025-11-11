@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 确保 html 和 body 占据全屏 */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
 /* 自定义滚动条样式 */
 ::-webkit-scrollbar {
   width: 8px;
@@ -51,14 +65,6 @@ a:hover {
   color: #535bf2;
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
@@ -76,7 +82,7 @@ button {
   transition: border-color 0.25s;
 }
 button:hover {
-  border-color: #646cff;
+  /* border-color: #646cff; */
 }
 button:focus,
 button:focus-visible {
@@ -90,8 +96,113 @@ button:focus-visible {
   }
   a:hover {
     color: #747bff;
+    /* color:#10b981; */
   }
   button {
-    background-color: #f9f9f9;
+    background-color: transparent;
   }
+}
+
+/* ==================== Ant Design 通知样式自定义 ==================== */
+
+/* 通知容器 */
+.ant-notification {
+  z-index: 9999;
+}
+
+/* 通知项 - 统一灰黑色背景 */
+.ant-notification-notice {
+  background-color: #1f2937 !important;
+  border: 1px solid #374151 !important;
+  border-radius: 8px !important;
+  padding: 16px 20px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  max-width: 400px;
+}
+
+/* 成功通知 - 仅图标颜色 */
+.ant-notification-notice-success {
+  background-color: #1f2937 !important;
+}
+
+.ant-notification-notice-success .ant-notification-notice-icon {
+  color: #10b981 !important;
+}
+
+/* 错误通知 - 仅图标颜色 */
+.ant-notification-notice-error {
+  background-color: #1f2937 !important;
+}
+
+.ant-notification-notice-error .ant-notification-notice-icon {
+  color: #ef4444 !important;
+}
+
+/* 警告通知 - 仅图标颜色 */
+.ant-notification-notice-warning {
+  background-color: #1f2937 !important;
+}
+
+.ant-notification-notice-warning .ant-notification-notice-icon {
+  color: #f59e0b !important;
+}
+
+/* 信息通知 - 仅图标颜色 */
+.ant-notification-notice-info {
+  background-color: #1f2937 !important;
+}
+
+.ant-notification-notice-info .ant-notification-notice-icon {
+  color: #3b82f6 !important;
+}
+
+/* 通知标题 */
+.ant-notification-notice-message {
+  color: #f9fafb !important;
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  margin-bottom: 8px !important;
+}
+
+/* 通知描述 */
+.ant-notification-notice-description {
+  color: #d1d5db !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+/* 通知图标 */
+.ant-notification-notice-icon {
+  font-size: 24px !important;
+  margin-left: 0 !important;
+}
+
+/* 关闭按钮 */
+.ant-notification-notice-close {
+  color: #9ca3af !important;
+}
+
+.ant-notification-notice-close:hover {
+  color: #f3f4f6 !important;
+}
+
+/* 通知内容区域 */
+.ant-notification-notice-with-icon .ant-notification-notice-message {
+  margin-left: 48px !important;
+  margin-bottom: 4px !important;
+}
+
+.ant-notification-notice-with-icon .ant-notification-notice-description {
+  margin-left: 48px !important;
+}
+
+/* 自定义描述中的强调文本 */
+.ant-notification-notice-description strong {
+  color: #60a5fa !important;
+  font-weight: 600;
+}
+
+/* 自定义描述中的段落 */
+.ant-notification-notice-description p {
+  margin: 4px 0;
 }

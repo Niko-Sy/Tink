@@ -1,20 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
-
-interface User {
-  id: number;
-  name: string;
-  status: string;
-  avatar: string;
-}
-
-interface ChatRoom {
-  id: number;
-  name: string;
-  icon: string;
-  unread: number;
-  roomId: string;
-}
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import type { User, ChatRoom } from '../types';
+import logo from '../assets/Tink_white.svg';
 
 interface SidebarProps {
   chatRooms: ChatRoom[];
@@ -31,7 +20,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   onChatRoomChange,
   onAddChatRoom
 }) => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isRoomListCollapsed, setIsRoomListCollapsed] = useState(false);
+  const [showText, setShowText] = useState(true); // 控制文字显示
 
   // 点击外部关闭用户菜单
   useEffect(() => {
@@ -54,6 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     switch(action) {
       case 'profilePage':
         console.log('打开个人主页');
+        navigate('/profile');
         break;
       case 'accountSettings':
         console.log('打开账号设置');
@@ -72,22 +66,61 @@ const Sidebar: React.FC<SidebarProps> = ({
         break;
       case 'logout':
         console.log('退出登录');
-        // TODO: 实现退出登录逻辑
+        logout();
+        navigate('/login');
         break;
+    }
+  };
+
+  // 复制用户ID到剪贴板
+  const handleCopyUserId = async () => {
+    const userId = user?.userId || 'U123456789';
+    try {
+      await navigator.clipboard.writeText(userId);
+      console.log('用户ID已复制:', userId);
+      // TODO: 可以添加一个提示通知
+    } catch (err) {
+      console.error('复制失败:', err);
+    }
+  };
+
+  // 切换聊天室列表收缩状态
+  const toggleRoomListCollapse = () => {
+    if (isRoomListCollapsed) {
+      // 展开:先展开宽度,300ms后显示文字
+      setIsRoomListCollapsed(false);
+      setTimeout(() => {
+        setShowText(true);
+      }, 300);
+    } else {
+      // 收缩:先隐藏文字,然后收缩宽度
+      setShowText(false);
+      setTimeout(() => {
+        setIsRoomListCollapsed(true);
+      }, 0);
     }
   };
 
   return (
     <div className="flex flex-col h-screen border-r border-gray-800">
       {/* 品牌标识 - 横跨两列 */}
-      <div className="flex items-center px-5 py-4 bg-gray-900 border-b border-gray-800">
-        <div className="w-24 h-12 bg-gray-700 rounded-btn flex items-center justify-center mr-3">
-          <span className="font-bold">LOGO</span>
+      <div className={`flex items-center pl-8 pr-5 pb-1 pt-3 bg-gray-900 border-b border-gray-800 transition-all duration-300 ${
+        isRoomListCollapsed ? 'w-auto' : ''
+      }`}>
+        <div className="w-16 h-16 bg-transparent rounded-btn flex items-center justify-center mr-3">
+          {/* <span className="font-bold">{user?.username.charAt(0).toUpperCase()}</span> */}
+          <img 
+              src={logo}
+              alt="User Avatar" 
+              className="w-full h-full object-cover"
+          />
         </div>
-        <div className='mx-2'>
-          <div className="font-bold test-xl">聊天室</div>
-          <div className="text-xs text-gray-500">ChatRoom</div>
-        </div>
+        {!isRoomListCollapsed && showText && (
+          <div className='mx-4'>
+            <div className="font-bold text-logo">Tink</div>
+            <div className="text-xs text-gray-500">ChatRoom</div>
+          </div>
+        )}
       </div>
 
       {/* 下方两列区域 */}
@@ -105,7 +138,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 }}
               >
                 <img 
-                  src={users.find(u => u.id === 1)?.avatar} 
+                  src={user?.avatar || users.find(u => u.userId === 'U123456789')?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg'} 
                   alt="User Avatar" 
                   className="w-full h-full object-cover"
                 />
@@ -207,38 +240,97 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
         
         {/* 右侧列 - 聊天室列表 */}
-        <div className="w-56 bg-gray-900 flex flex-col">
+        <div className={`bg-gray-900 flex flex-col transition-all duration-300 ${
+          isRoomListCollapsed ? 'w-16' : 'w-56'
+        }`}>
+          {/* 用户信息区域 - 固定在顶部 */}
+          <div className="h-16 bg-gray-900 border-0 border-gray-700 pt-3 pl-6 pr-2">
+            <div className={`flex items-center  ${isRoomListCollapsed ? 'justify-center' : 'justify-between'}`}>
+              {!isRoomListCollapsed && showText && (
+                <div className="flex-1 min-w-0 mr-2">
+                  <div className="text-name  text-white truncate">
+                    {user?.username || '张伟'}
+                  </div>
+                </div>
+              )}
+              <button
+                onClick={toggleRoomListCollapse}
+                className={` p-1 hover:bg-gray-800 rounded transition-colors flex-shrink-0 bg-transparent border-0 focus:outline-none ${isRoomListCollapsed ? 'mr-4' : 'ml-auto mr-1'} focus:text-white`}
+                title={isRoomListCollapsed ? "展开" : "收起"}
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className={`h-5 w-5 text-gray-400 transition-transform duration-300 ${
+                    isRoomListCollapsed ? 'rotate-180' : ''
+                  }`}
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                </svg>
+              </button>
+            </div>
+            {!isRoomListCollapsed && showText && (
+              <div className="flex items-center text-xs text-gray-400 pl-0.5">
+                <span className="truncate mr-2">
+                  ID: {user?.userId || 'U123456789'}
+                </span>
+                <button
+                  onClick={handleCopyUserId}
+                  className="p-1 hover:bg-gray-700 rounded transition-colors flex-shrink-0 bg-transparent border-0 focus:outline-none"
+                  title="复制ID"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* 聊天室列表 */}
-          <div className="flex-1 overflow-y-auto py-2 mt-2">
+          <div className="flex-1 overflow-y-auto py-2 mt-0">
             {chatRooms.map(room => (
               <div
                 key={room.id}
-                className={`flex items-center px-4 py-3 mx-2 my-1 cursor-pointer transition-colors rounded-list ${
+                className={` flex items-center px-3 py-3 mx-2.5 my-1.5 cursor-pointer transition-colors rounded-list ${
                   activeChatRoom === room.id
                     ? 'bg-gray-700 text-white'
                     : 'hover:bg-gray-800 text-gray-400'
                 }`}
                 onClick={() => onChatRoomChange(room.id)}
+                title={isRoomListCollapsed ? room.name : ''}
               >
-                <i className={`${room.icon} mr-3 text-lg`}></i>
-                <span className="flex-1 text-sm">{room.name}</span>
-                {room.unread > 0 && (
-                  <span className="bg-gray-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {room.unread}
-                  </span>
+                <i className={`${room.icon} ${isRoomListCollapsed ? 'text-xl' : 'mr-3 text-xl'}`}></i>
+                {!isRoomListCollapsed && showText && (
+                  <>
+                    <span className="flex-1 text-sm">{room.name}</span>
+                    {room.unread > 0 && (
+                      <span className="bg-gray-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {room.unread}
+                      </span>
+                    )}
+                  </>
                 )}
+                {/* {isRoomListCollapsed && room.unread > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                )} */}
               </div>
             ))}
           </div>
           
           {/* 添加按钮 */}
-          <div className="p-4 border-t border-gray-800 mb-2">
+          <div className={`py-4 px-3 border-t border-gray-800 mb-2 `}>
             <button
-              className="w-full flex items-center justify-center py-2 px-4 bg-gray-700 hover:bg-gray-600 text-white rounded-btn transition-colors focus:outline-none"
+              className={`w-full h-10 flex items-center justify-center py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-btn transition-colors focus:outline-none ${
+                isRoomListCollapsed ? 'px-0' : ''
+              }`}
               onClick={onAddChatRoom}
+              title={isRoomListCollapsed ? '添加聊天室' : ''}
             >
-              <PlusOutlined className="mr-2" />
-              <span>添加聊天室</span>
+              <PlusOutlined className={isRoomListCollapsed ? '' : ''} />
+              {!isRoomListCollapsed && showText && <span>添加聊天室</span>}
             </button>
           </div>
         </div>

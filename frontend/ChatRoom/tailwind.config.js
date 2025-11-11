@@ -18,6 +18,11 @@ export default {
         'btn': '2.0rem', // 自定义按钮圆角
         'list': '1.4rem', // 自定义列表圆角
       },
+      fontSize:{
+        'max':'2.6rem', // 42px
+        'name':'1.6rem', //32px
+        'logo':'1.4rem' // 29px
+      }
     },
   },
   plugins: [],
