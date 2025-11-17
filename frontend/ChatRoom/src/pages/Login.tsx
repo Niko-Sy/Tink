@@ -83,7 +83,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       nickname: formData.username,
       onlineStatus: 'online' as const,
       accountStatus: 'active' as const,
-      role: 'user' as const,
+      systemRole: 'super_admin' as const,
       signature: '这个人很懒，什么都没有留下~',
       loginTime: new Date().toISOString()
     };
@@ -119,7 +119,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       nickname: formData.username,
       onlineStatus: 'online' as const,
       accountStatus: 'active' as const,
-      role: 'user' as const,
+      systemRole: 'user' as const,
       signature: '这个人很懒，什么都没有留下~',
       loginTime: new Date().toISOString()
     };
@@ -170,7 +170,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-screen bg-gradient-to-br from-gray-900 via-black to-gray-900">
+    <div className="flex items-center justify-center min-h-screen w-screen bg-login">
       <div className="w-full max-w-md px-4">
         {/* 卡片容器 */}
         <div className="bg-gray-800 rounded-2xl shadow-2xl p-8 border border-gray-700">

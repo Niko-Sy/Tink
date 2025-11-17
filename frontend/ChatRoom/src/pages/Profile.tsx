@@ -26,7 +26,9 @@ interface UserProfile {
   signature: string;
   onlineStatus: 'online' | 'away' | 'busy' | 'offline';
   accountStatus: 'active' | 'inactive' | 'suspended';
-  role: 'admin' | 'moderator' | 'user';
+  systemRole: 'super_admin' | 'user';
+  globalMuteStatus?: 'muted' | 'unmuted';
+  globalMuteEndTime?: string;
 }
 
 const Profile: React.FC = () => {
@@ -45,7 +47,9 @@ const Profile: React.FC = () => {
     signature: user?.signature || '这个人很懒，什么都没有留下~',
     onlineStatus: user?.onlineStatus || 'online',
     accountStatus: user?.accountStatus || 'active',
-    role: user?.role || 'user'
+    systemRole: user?.systemRole || 'user',
+    globalMuteStatus: user?.globalMuteStatus || 'unmuted',
+    globalMuteEndTime: user?.globalMuteEndTime
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -67,8 +71,7 @@ const Profile: React.FC = () => {
   ];
 
   const roleOptions = [
-    { value: 'admin', label: '管理员', color: 'text-purple-400' },
-    { value: 'moderator', label: '版主', color: 'text-blue-400' },
+    { value: 'super_admin', label: '超级管理员', color: 'text-purple-400' },
     { value: 'user', label: '普通用户', color: 'text-gray-400' }
   ];
 
@@ -210,9 +213,9 @@ const Profile: React.FC = () => {
               {/* 系统角色 */}
               <div className="mt-4 text-center">
                 <span className={`inline-block px-4 py-2 rounded-full text-sm font-semibold ${
-                  roleOptions.find(opt => opt.value === profile.role)?.color
+                  roleOptions.find(opt => opt.value === profile.systemRole)?.color
                 } bg-gray-900`}>
-                  {roleOptions.find(opt => opt.value === profile.role)?.label}
+                  {roleOptions.find(opt => opt.value === profile.systemRole)?.label}
                 </span>
               </div>
             </div>
@@ -405,13 +408,32 @@ const Profile: React.FC = () => {
                   <div className="col-span-2">
                     <div className="bg-gray-900 rounded-lg py-3 px-4">
                       <span className={`font-semibold ${
-                        roleOptions.find(opt => opt.value === profile.role)?.color
+                        roleOptions.find(opt => opt.value === profile.systemRole)?.color
                       }`}>
-                        {roleOptions.find(opt => opt.value === profile.role)?.label}
+                        {roleOptions.find(opt => opt.value === profile.systemRole)?.label}
                       </span>
                     </div>
                   </div>
                 </div>
+
+                {/* 全局禁言状态 */}
+                {profile.globalMuteStatus === 'muted' && (
+                  <div className="grid grid-cols-3 gap-4 items-center">
+                    <label className="text-gray-400">禁言状态</label>
+                    <div className="col-span-2">
+                      <div className="bg-red-900/20 border border-red-500/30 rounded-lg py-3 px-4">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-red-400 font-semibold">已被全局禁言</span>
+                        </div>
+                        {profile.globalMuteEndTime && (
+                          <p className="text-xs text-red-300 mt-1">
+                            解除时间: {new Date(profile.globalMuteEndTime).toLocaleString('zh-CN')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

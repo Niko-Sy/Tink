@@ -11,6 +11,13 @@ html, body {
   overflow: hidden;
 }
 
+.bg-login {
+  background-image: url('./assets/loginbackground.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 #root {
   width: 100%;
   height: 100%;

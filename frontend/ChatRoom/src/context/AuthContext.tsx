@@ -1,18 +1,10 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
+import type { ChatRoomMember, User as UserType } from '../types';
 
-interface User {
-  userId: string;
-  username: string;
+// 使用types中的User接口，扩展登录相关字段
+interface User extends UserType {
   token: string;
-  nickname?: string;
-  phone?: string;
-  email?: string;
-  avatar?: string;
-  signature?: string;
-  onlineStatus?: 'online' | 'away' | 'busy' | 'offline';
-  accountStatus?: 'active' | 'inactive' | 'suspended';
-  role?: 'admin' | 'moderator' | 'user';
   loginTime?: string;
 }
 
@@ -21,6 +13,10 @@ interface AuthContextType {
   login: (userData: Partial<User> & { username: string; token: string; userId: string }) => void;
   logout: () => void;
   isAuthenticated: boolean;
+  // 聊天室成员信息管理
+  currentRoomMember: ChatRoomMember | null;
+  setCurrentRoomMember: (member: ChatRoomMember | null) => void;
+  getCurrentRoomMember: (roomId: string) => ChatRoomMember | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +35,16 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [currentRoomMember, setCurrentRoomMember] = useState<ChatRoomMember | null>(null);
+  const [roomMembers, setRoomMembers] = useState<Record<string, ChatRoomMember>>({});
+  
+  // 使用 ref 来存储最新的 roomMembers，避免闭包问题
+  const roomMembersRef = useRef<Record<string, ChatRoomMember>>({});
+
+  // 同步 ref 和 state
+  useEffect(() => {
+    roomMembersRef.current = roomMembers;
+  }, [roomMembers]);
 
   // 初始化时从本地存储加载用户信息
   useEffect(() => {
@@ -52,23 +58,39 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         localStorage.removeItem('user');
       }
     }
+
+    // 加载聊天室成员信息
+    const storedMembers = localStorage.getItem('roomMembers');
+    if (storedMembers) {
+      try {
+        const membersData = JSON.parse(storedMembers);
+        setRoomMembers(membersData);
+      } catch (error) {
+        console.error('Failed to parse room members data:', error);
+        localStorage.removeItem('roomMembers');
+      }
+    }
   }, []);
 
   // 登录函数
   const login = (userData: Partial<User> & { username: string; token: string; userId: string }) => {
     const completeUserData: User = {
       userId: userData.userId,
-      username: userData.username,
+      username: userData.username || '',
+      name: userData.name || userData.nickname || userData.username,
+      status: userData.status || 'online',
+      avatar: userData.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
       token: userData.token,
       nickname: userData.nickname || userData.username,
       phone: userData.phone,
       email: userData.email,
-      avatar: userData.avatar,
       signature: userData.signature,
       onlineStatus: userData.onlineStatus || 'online',
       accountStatus: userData.accountStatus || 'active',
-      role: userData.role || 'user',
-      loginTime: new Date().toISOString()
+      systemRole: userData.systemRole || 'user',
+      loginTime: new Date().toISOString(),
+      globalMuteStatus: userData.globalMuteStatus || 'unmuted',
+      globalMuteEndTime: userData.globalMuteEndTime,
     };
     setUser(completeUserData);
     localStorage.setItem('user', JSON.stringify(completeUserData));
@@ -77,14 +99,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // 登出函数
   const logout = () => {
     setUser(null);
+    setCurrentRoomMember(null);
+    setRoomMembers({});
     localStorage.removeItem('user');
+    localStorage.removeItem('roomMembers');
   };
+
+  // 获取指定聊天室的成员信息
+  const getCurrentRoomMember = useCallback((roomId: string): ChatRoomMember | null => {
+    // 直接从 ref 中读取最新值
+    return roomMembersRef.current[roomId] || null;
+  }, []);
+
+  // 设置当前聊天室成员信息（并缓存）
+  const handleSetCurrentRoomMember = useCallback((member: ChatRoomMember | null) => {
+    setCurrentRoomMember(member);
+    if (member) {
+      setRoomMembers(prevRoomMembers => {
+        const newRoomMembers = {
+          ...prevRoomMembers,
+          [member.roomId]: member,
+        };
+        localStorage.setItem('roomMembers', JSON.stringify(newRoomMembers));
+        return newRoomMembers;
+      });
+    }
+  }, []); // 空依赖数组，因为使用了函数式更新
 
   const value: AuthContextType = {
     user,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    currentRoomMember,
+    setCurrentRoomMember: handleSetCurrentRoomMember,
+    getCurrentRoomMember,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

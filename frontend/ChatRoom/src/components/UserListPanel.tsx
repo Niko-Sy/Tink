@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { permissionChecker } from '../utils/permissions';
 
 interface UserListPanelProps {
   users: User[];
@@ -17,6 +19,7 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+  const { user, currentRoomMember } = useAuth();
 
   // 关闭菜单
   useEffect(() => {
@@ -227,16 +230,30 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
               </svg>
               <span>举报</span>
             </button>
-            <button
-              className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
-              onClick={() => handleMenuAction('mute', contextMenu.userId)}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-              </svg>
-              <span>禁言</span>
-            </button>
+            {/* 只有管理员才能看到禁言和踢出选项 */}
+            {permissionChecker.canMuteMember(user, currentRoomMember) && (
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
+                onClick={() => handleMenuAction('mute', contextMenu.userId)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+                <span>禁言</span>
+              </button>
+            )}
+            {permissionChecker.canRemoveMember(user, currentRoomMember) && (
+              <button
+                className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
+                onClick={() => handleMenuAction('kick', contextMenu.userId)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
+                </svg>
+                <span>踢出聊天室</span>
+              </button>
+            )}
           </div>
         )}
       </div>

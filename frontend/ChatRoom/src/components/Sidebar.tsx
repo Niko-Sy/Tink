@@ -7,9 +7,9 @@ import logo from '../assets/Tink_white.svg';
 
 interface SidebarProps {
   chatRooms: ChatRoom[];
-  activeChatRoom: number;
+  activeChatRoom: string;
   users: User[];
-  onChatRoomChange: (roomId: number) => void;
+  onChatRoomChange: (roomId: string) => void;
   onAddChatRoom: () => void;
 }
 
@@ -25,6 +25,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isRoomListCollapsed, setIsRoomListCollapsed] = useState(false);
   const [showText, setShowText] = useState(true); // 控制文字显示
+  const [currentView, setCurrentView] = useState<'chat' | 'contacts'>('chat'); // 切换聊天室/通讯录视图
 
   // 点击外部关闭用户菜单
   useEffect(() => {
@@ -127,6 +128,47 @@ const Sidebar: React.FC<SidebarProps> = ({
       <div className="flex flex-1 overflow-hidden">
         {/* 左侧列 - 用户头像和图标 */}
         <div className="w-16 bg-gray-950 flex flex-col items-center border-r border-gray-800">
+          
+          
+          
+          
+          {/* 聊天图标按钮 */}
+          <div className="p-2 border-gray-800 w-full flex justify-center">
+            <button
+              className={`w-12 h-12 rounded-full flex items-center p-2 transition-colors border-0 focus:outline-none justify-center cursor-pointer ${
+                currentView === 'chat' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-transparent text-gray-500 hover:text-gray-300'
+              }`}
+              onClick={() => setCurrentView('chat')}
+              title="聊天室"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </button>
+          </div>
+
+          {/* 通讯录图标按钮 */}
+          <div className="p-2 border-gray-800 w-full flex justify-center">
+            <button
+              className={`w-12 h-12 rounded-full flex items-center p-2 transition-colors border-0 focus:outline-none justify-center cursor-pointer ${
+                currentView === 'contacts' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-transparent text-gray-500 hover:text-gray-300'
+              }`}
+              onClick={() => setCurrentView('contacts')}
+              title="通讯录"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* 填充空间 */}
+          <div className="flex-1"></div>
+
           {/* 用户头像和信息 */}
           <div className="p-3 border-gray-800 w-full flex justify-center mt-4">
             <div className="relative">
@@ -145,7 +187,10 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
               {showUserMenu && (
                 <div 
-                  className="absolute left-16 top-0 mt-0 min-w-[160px] bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-50 py-1"
+                  className="fixed left-16 min-w-[160px] bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-[100] py-1"
+                  style={{
+                    bottom: '80px', // 固定在距离底部100px的位置
+                  }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
@@ -218,10 +263,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
             </div>
           </div>
-          
-          {/* 填充空间 */}
-          <div className="flex-1"></div>
-          
+
           {/* 外观设置按钮 */}
           <div className="p-3 border-gray-800 w-full flex justify-center mb-2">
             <button
@@ -250,7 +292,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex-1 min-w-0 mr-2">
                   <div className="text-name  text-white truncate">
                     {user?.username || '张伟'} 
-                    <span className="text-xs text-gray-300 ml-1">的聊天室</span>
+                    <span className="text-xs text-gray-300 ml-1">
+                      {currentView === 'chat' ? '的聊天室' : '的通讯录'}
+                    </span>
                   </div>
                 </div>
               )}
@@ -292,33 +336,67 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           {/* 聊天室列表 */}
           <div className="flex-1 overflow-y-auto py-2 mt-0">
-            {chatRooms.map(room => (
-              <div
-                key={room.id}
-                className={` flex items-center px-3 py-3 mx-2.5 my-1.5 cursor-pointer transition-colors rounded-list ${
-                  activeChatRoom === room.id
-                    ? 'bg-gray-700 text-white'
-                    : 'hover:bg-gray-800 text-gray-400'
-                }`}
-                onClick={() => onChatRoomChange(room.id)}
-                title={isRoomListCollapsed ? room.name : ''}
-              >
-                <i className={`${room.icon} ${isRoomListCollapsed ? 'text-xl' : 'mr-3 text-xl'}`}></i>
-                {!isRoomListCollapsed && showText && (
-                  <>
-                    <span className="flex-1 text-sm">{room.name}</span>
-                    {room.unread > 0 && (
-                      <span className="bg-gray-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                        {room.unread}
-                      </span>
-                    )}
-                  </>
-                )}
-                {/* {isRoomListCollapsed && room.unread > 0 && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-                )} */}
-              </div>
-            ))}
+            {currentView === 'chat' ? (
+              // 聊天室列表
+              chatRooms.map(room => (
+                <div
+                  key={room.roomId}
+                  className={` flex items-center px-3 py-3 mx-2.5 my-1.5 cursor-pointer transition-colors rounded-list ${
+                    activeChatRoom === room.roomId
+                      ? 'bg-gray-700 text-white'
+                      : 'hover:bg-gray-800 text-gray-400'
+                  }`}
+                  onClick={() => onChatRoomChange(room.roomId)}
+                  title={isRoomListCollapsed ? room.name : ''}
+                >
+                  <i className={`${room.icon} ${isRoomListCollapsed ? 'text-xl' : 'mr-3 text-xl'}`}></i>
+                  {!isRoomListCollapsed && showText && (
+                    <>
+                      <span className="flex-1 text-sm">{room.name}</span>
+                      {room.unread > 0 && (
+                        <span className="bg-gray-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {room.unread}
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))
+            ) : (
+              // 通讯录列表
+              users.map(contact => (
+                <div
+                  key={contact.userId}
+                  className="flex items-center px-2 py-2 mx-1.5 my-1.5 cursor-pointer transition-colors rounded-list hover:bg-gray-800 text-gray-400"
+                  onClick={() => {
+                    console.log('点击联系人:', contact);
+                    // TODO: 实现联系人详情或私聊功能
+                  }}
+                  title={isRoomListCollapsed ? contact.name : ''}
+                >
+                  <div className={`relative w-8 h-9 py-0.5`}>
+                      <img
+                        src={contact.avatar}
+                        alt={contact.name}
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                      <div className={`absolute bottom-0 right-0 w-2 h-2 rounded-full border border-gray-900 ${
+                        contact.status === 'online' ? 'bg-green-500' :
+                        contact.status === 'away' ? 'bg-yellow-500' : 'bg-gray-400'
+                      }`}></div>
+                    </div>
+                  {!isRoomListCollapsed && showText && (
+                        <div className="flex-1 ml-3">
+                          <div className="text-sm text-gray-300">{contact.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {contact.status === 'online' ? '在线' : 
+                             contact.status === 'away' ? '离开' : '离线'}
+                          </div>
+                        </div>
+                      )}
+                </div>
+              ))
+            )}
           </div>
           
           {/* 添加按钮 */}
@@ -328,10 +406,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                 isRoomListCollapsed ? 'px-0' : ''
               }`}
               onClick={onAddChatRoom}
-              title={isRoomListCollapsed ? '添加聊天室' : ''}
+              title={isRoomListCollapsed ? (currentView === 'chat' ? '添加聊天室' : '添加好友') : ''}
             >
               <PlusOutlined className={isRoomListCollapsed ? '' : ''} />
-              {!isRoomListCollapsed && showText && <span>添加聊天室</span>}
+              {!isRoomListCollapsed && showText && (
+                <span>{currentView === 'chat' ? '添加聊天室' : '添加好友'}</span>
+              )}
             </button>
           </div>
         </div>

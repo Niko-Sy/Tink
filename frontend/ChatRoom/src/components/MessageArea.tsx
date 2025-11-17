@@ -1,5 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { User, Message } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { permissionChecker } from '../utils/permissions';
 
 interface MessageAreaProps {
   messages: Message[];
@@ -10,7 +13,7 @@ interface ContextMenu {
   x: number;
   y: number;
   type: 'message' | 'avatar' | 'ownavatar';
-  messageId?: number;
+  messageId?: string;
   userId?: string; // 改为string类型
   isOwn?: boolean;
 }
@@ -18,6 +21,8 @@ interface ContextMenu {
 const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+  const { user, currentRoomMember } = useAuth();
+  const navigate = useNavigate();
 
   // 滚动到最新消息
   const scrollToBottom = () => {
@@ -51,7 +56,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
       x: position.x,
       y: position.y,
       type: 'message',
-      messageId: message.id,
+      messageId: message.messageId,
       isOwn: message.isOwn
     });
   };
@@ -148,6 +153,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
         break;
       case 'profilePage':
         console.log('打开个人主页:', data);
+        navigate('/profile');
         break;
       case 'accountSettings':
         console.log('打开账号设置:', data);
@@ -178,7 +184,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
       <div className="space-y-4">
         {messages.map(message => (
           <div
-            key={message.id}
+            key={message.messageId}
             className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
           >
             {!message.isOwn && (
@@ -188,7 +194,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
               >
                 <img
                   src={users.find(u => u.userId === message.userId)?.avatar}
-                  alt={message.userName}
+                  alt={message.userName || '匿名用户'}
                   className="w-8 h-8 rounded-full object-cover cursor-pointer"
                 />
               </div>
@@ -196,7 +202,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
             <div className="max-w-xs md:max-w-md">
               {!message.isOwn && (
                 <div className="text-xs text-gray-500 mb-1">
-                  {message.userName} {message.time}
+                  {message.userName || '匿名用户'} {message.time}
                 </div>
               )}
               <div
@@ -243,25 +249,70 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
             <>
               {contextMenu.isOwn && (
                 <>
-                  <button
-                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
-                    onClick={() => handleMenuAction('recall', contextMenu.messageId)}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                    </svg>
-                    <span>撤回消息</span>
-                  </button>
-                  <button
-                    className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
-                    onClick={() => handleMenuAction('edit', contextMenu.messageId)}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    <span>编辑消息</span>
-                  </button>
+                  {/* 只有自己的消息才能撤回 */}
+                  {permissionChecker.canDeleteMessage(
+                    user, 
+                    currentRoomMember, 
+                    messages.find(m => m.messageId === contextMenu.messageId)!
+                  ) && (
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
+                      onClick={() => handleMenuAction('recall', contextMenu.messageId)}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                      </svg>
+                      <span>撤回消息</span>
+                    </button>
+                  )}
+                  {/* 只有自己的消息才能编辑 */}
+                  {permissionChecker.canEditMessage(
+                    user, 
+                    currentRoomMember, 
+                    messages.find(m => m.messageId === contextMenu.messageId)!
+                  ) && (
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
+                      onClick={() => handleMenuAction('edit', contextMenu.messageId)}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      <span>编辑消息</span>
+                    </button>
+                  )}
                 </>
+              )}
+              {/* 管理员可以编辑/删除他人消息 */}
+              {!contextMenu.isOwn && permissionChecker.canEditMessage(
+                user, 
+                currentRoomMember, 
+                messages.find(m => m.messageId === contextMenu.messageId)!
+              ) && (
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-yellow-400 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
+                  onClick={() => handleMenuAction('edit', contextMenu.messageId)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  <span>编辑消息</span>
+                </button>
+              )}
+              {!contextMenu.isOwn && permissionChecker.canDeleteMessage(
+                user, 
+                currentRoomMember, 
+                messages.find(m => m.messageId === contextMenu.messageId)!
+              ) && (
+                <button
+                  className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
+                  onClick={() => handleMenuAction('delete', contextMenu.messageId)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>删除消息</span>
+                </button>
               )}
               <button
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
@@ -275,7 +326,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
               <button
                 className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
                 onClick={() => {
-                  const message = messages.find(m => m.id === contextMenu.messageId);
+                  const message = messages.find(m => m.messageId === contextMenu.messageId);
                   if (message) {
                     navigator.clipboard.writeText(message.text);
                     console.log('已复制消息内容');
@@ -336,25 +387,28 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
                 <span>查看资料</span>
               </button>
               <div className="border-t border-gray-700 my-1"></div>
-                <button
+              <button
                 className="w-full text-left px-4 py-2 text-sm text-yellow-400 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
                 onClick={() => handleMenuAction('report', contextMenu.userId)}
-                >
+              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 <span>举报</span>
-                </button>
+              </button>
+              {/* 只有管理员才能禁言 */}
+              {permissionChecker.canMuteMember(user, currentRoomMember) && (
                 <button
-                className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
-                onClick={() => handleMenuAction('mute', contextMenu.userId)}
+                  className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent"
+                  onClick={() => handleMenuAction('mute', contextMenu.userId)}
                 >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                </svg>
-                <span>禁言</span>
-              </button>
+                  </svg>
+                  <span>禁言</span>
+                </button>
+              )}
             </>
           )}
 
