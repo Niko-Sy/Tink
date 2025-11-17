@@ -112,7 +112,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* <span className="font-bold">{user?.username.charAt(0).toUpperCase()}</span> */}
           <img 
               src={logo}
-              alt="User Avatar" 
+              alt="Logo" 
               className="w-full h-full object-cover"
           />
         </div>

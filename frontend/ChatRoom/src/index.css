@@ -210,3 +210,111 @@ button:focus-visible {
 .ant-notification-notice-description p {
   margin: 4px 0;
 }
+
+/* ==================== 登录页面动画 ==================== */
+
+/* 淡入动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 向下滑入动画 */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 抖动动画（用于错误提示） */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+/* 慢速脉冲动画（用于Logo） */
+@keyframes pulseSlow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* 慢速弹跳动画 */
+@keyframes bounceSlow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+/* 慢速旋转动画 */
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 加载条动画 */
+@keyframes loadingBar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 应用动画类 */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.animate-slide-down {
+  animation: slideDown 0.3s ease-out;
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 3s ease-in-out infinite;
+}
+
+.animate-bounce-slow {
+  animation: bounceSlow 2s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spinSlow 2s linear infinite;
+}
+
+.animate-loading-bar {
+  animation: loadingBar 1.5s ease-in-out infinite;
+}
