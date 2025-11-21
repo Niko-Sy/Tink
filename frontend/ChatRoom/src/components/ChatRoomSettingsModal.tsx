@@ -140,12 +140,12 @@ const ChatRoomSettingsModal: React.FC<ChatRoomSettingsModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* 遮罩层 */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-70"
+        className="absolute inset-0 bg-black bg-opacity-70 animate-fade-in-overlay"
         onClick={handleCancel}
       ></div>
 
       {/* 弹窗内容 */}
-      <div className="relative bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 border border-gray-700 max-h-[90vh] overflow-y-auto animate-scale-in">
         {/* 头部 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 sticky top-0 bg-gray-800 z-10">
           <h2 className="text-xl font-bold text-white">聊天室设置</h2>

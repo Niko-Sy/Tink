@@ -343,7 +343,7 @@ const App: React.FC = () => {
   ];
   
   return (
-    <div className="flex h-screen w-screen bg-black text-white">
+    <div className="flex h-screen w-screen bg-ground text-white">
       {contextHolder}
       {/* 左侧边栏 */}
       <Sidebar
@@ -359,7 +359,7 @@ const App: React.FC = () => {
         {/* 中间内容区域 */}
         <div className="flex-1 flex flex-col">
           {/* 顶部信息栏 */}
-          <div className="flex items-center justify-between px-6 py-3 bg-gray-900 border-b border-gray-800">
+          <div className="flex items-center justify-between px-6 py-3 bg-ground  border-gray-800">
             <div className="flex items-center space-x-3">
               <div className="text-xl font-semibold">
                 <i className={`${chatRooms.find(room => room.roomId === activeChatRoom)?.icon} mr-3 text-lg`}></i>
@@ -429,7 +429,7 @@ const App: React.FC = () => {
                 <MessageArea messages={messages} users={users} />
             
               {/* 输入控制区 */}
-              <div className="border-t border-gray-800 bg-gray-900 p-4">
+              <div className=" border-gray-800 bg-ground p-4">
                 {/* 禁言提示 */}
                 {!permissionChecker.canSendMessage(user, currentRoomMember) && (
                   <div className="mb-3 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
@@ -506,7 +506,7 @@ const App: React.FC = () => {
         
         {/* 右侧用户列表面板（带过渡动画容器） */}
         <div
-          className={`flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out ${showUserPanel ? 'w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
+          className={`flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out ${showUserPanel ? 'w-60 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
           aria-hidden={!showUserPanel}
         >
           <UserListPanel users={users} />
