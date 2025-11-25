@@ -16,17 +16,17 @@ export default {
     extend: {
       colors: {
         gray: {
-          400: '#A3A3A3', // 只覆盖 gray-400
-          500: '#525353', // 只覆盖 gray-500
-          600: '#3A3B3B', // 只覆盖 gray-600
-          700: '#2A2B2B', // 只覆盖 gray-700
-          800: '#1E1F1F', // 只覆盖 gray-800
-          900: '#171818', // 覆盖 gray-900
+          400: '#A3A3A5', // 只覆盖 gray-400
+          500: '#5D5D5F', // 只覆盖 gray-500
+          600: '#4A4A4C', // 只覆盖 gray-600
+          700: '#3A3A3C', // 只覆盖 gray-700
+          800: '#29292B', // 只覆盖 gray-800
+          900: '#212123', // 覆盖 gray-900
         },
-        'ground': '#0E1012',
-        'primary': '#171819',
-        'secondary': '#1E1F20',
-        'grayborder': '#2A2B2B'
+        'ground': '#1A1A1C',
+        'primary': '#212123',
+        'secondary': '#29292B',
+        'grayborder': '#3A3A3C',
       },
       borderRadius: {
         'btn': '2.0rem', // 自定义按钮圆角
