@@ -233,6 +233,11 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
       <div className="space-y-4">
         {messages.map((message) => {
           const isVisible = visibleMessages.has(message.messageId);
+          // 获取消息发送者的头像
+          const senderAvatar = message.isOwn 
+            ? (user?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg')
+            : (users.find(u => u.userId === message.userId)?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg');
+          
           return (
             <div
               key={message.messageId}
@@ -252,7 +257,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
                 onClick={(e) => handleAvatarClick(e, message.userId)}
               >
                 <img
-                  src={users.find(u => u.userId === message.userId)?.avatar}
+                  src={senderAvatar}
                   alt={message.userName || '匿名用户'}
                   className="w-8 h-8 rounded-full object-cover cursor-pointer"
                 />
@@ -286,7 +291,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
                 onClick={(e) => handleAvatarOwnClick(e, message.userId)}
               >
                 <img
-                  src={users.find(u => u.userId === message.userId)?.avatar}
+                  src={senderAvatar}
                   alt={message.userName}
                   className="w-8 h-8 rounded-full object-cover cursor-pointer"
                 />

@@ -1,11 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { CloseOutlined, SaveOutlined } from '@ant-design/icons';
+import { CloseOutlined, SaveOutlined, DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 
 interface ChatRoomSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (settings: ChatRoomSettings) => void;
+  onDelete?: () => void;
   currentSettings: ChatRoomSettings;
+  canDelete?: boolean;
 }
 
 export interface ChatRoomSettings {
@@ -20,7 +22,9 @@ const ChatRoomSettingsModal: React.FC<ChatRoomSettingsModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  currentSettings
+  onDelete,
+  currentSettings,
+  canDelete = false
 }) => {
   const [formData, setFormData] = useState<ChatRoomSettings>(currentSettings);
   const [errors, setErrors] = useState({
@@ -29,7 +33,33 @@ const ChatRoomSettingsModal: React.FC<ChatRoomSettingsModalProps> = ({
     icon: '',
     password: ''
   });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const passwordSectionRef = useRef<HTMLDivElement>(null);
+
+  // 当 currentSettings 变化时，同步到 formData（解决切换聊天室后数据不更新的问题）
+  useEffect(() => {
+    setFormData(currentSettings);
+    // 清除之前的错误状态
+    setErrors({
+      name: '',
+      description: '',
+      icon: '',
+      password: ''
+    });
+  }, [currentSettings]);
+
+  // 当弹窗打开时，确保使用最新的设置
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(currentSettings);
+      setErrors({
+        name: '',
+        description: '',
+        icon: '',
+        password: ''
+      });
+    }
+  }, [isOpen, currentSettings]);
 
   // 当类型改为protected时,自动滚动到密码输入区域
   useEffect(() => {
@@ -119,7 +149,17 @@ const ChatRoomSettingsModal: React.FC<ChatRoomSettingsModalProps> = ({
       icon: '',
       password: ''
     });
+    setShowDeleteConfirm(false);
     onClose();
+  };
+
+  // 处理解散聊天室
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete();
+      setShowDeleteConfirm(false);
+      onClose();
+    }
   };
 
   // 处理输入变化
@@ -281,20 +321,55 @@ const ChatRoomSettingsModal: React.FC<ChatRoomSettingsModalProps> = ({
         </div>
 
         {/* 底部按钮 */}
-        <div className="flex justify-end space-x-3 px-6 py-4 border-t border-gray-700 bg-gray-800 sticky bottom-0">
-          <button
-            onClick={handleCancel}
-            className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors focus:outline-none"
-          >
-            取消
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex items-center space-x-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors focus:outline-none"
-          >
-            <SaveOutlined />
-            <span>保存设置</span>
-          </button>
+        <div className="flex justify-between items-center px-6 py-4 border-t border-gray-700 bg-gray-800 sticky bottom-0">
+          {/* 左侧解散按钮 */}
+          <div>
+            {canDelete && onDelete && (
+              showDeleteConfirm ? (
+                <div className="flex items-center space-x-2">
+                  <ExclamationCircleOutlined className="text-red-500 text-lg" />
+                  <span className="text-sm text-gray-300">确认解散聊天室？</span>
+                  <button
+                    onClick={handleDelete}
+                    className="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white text-sm rounded-lg transition-colors focus:outline-none"
+                  >
+                    确认解散
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-4 py-1.5 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded-lg transition-colors focus:outline-none"
+                  >
+                    取消
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center space-x-2 px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-500 border border-red-600/50 hover:border-red-600 rounded-lg transition-colors focus:outline-none"
+                >
+                  <DeleteOutlined />
+                  <span>解散聊天室</span>
+                </button>
+              )
+            )}
+          </div>
+          
+          {/* 右侧操作按钮 */}
+          <div className="flex space-x-3">
+            <button
+              onClick={handleCancel}
+              className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors focus:outline-none"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleSave}
+              className="flex items-center space-x-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors focus:outline-none"
+            >
+              <SaveOutlined />
+              <span>保存设置</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

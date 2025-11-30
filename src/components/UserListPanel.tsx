@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { notification } from 'antd';
 import type { User } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { permissionChecker } from '../utils/permissions';
@@ -8,6 +9,7 @@ import ContextMenu from './ContextMenu';
 import { useContextMenu } from '../hooks/useContextMenu';
 import { MenuItems, createDivider } from '../utils/menuItems';
 import type { MenuItemType } from './ContextMenu';
+import { memberService } from '../services/member';
 
 interface UserListPanelProps {
   users: User[];
@@ -18,42 +20,264 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const { contextMenu, handleContextMenu, closeContextMenu } = useContextMenu();
   const { user, currentRoomMember } = useAuth();
+  const [api, contextHolder] = notification.useNotification({
+    placement: 'topRight',
+    top: 24,
+    duration: 3,
+  });
 
   // 处理用户点击
   const handleUserClick = (e: React.MouseEvent, userId: string) => {
     handleContextMenu(e, userId);
   };
 
+  // 处理自己的菜单操作（与 Sidebar 相同）
+  const handleSelfMenuAction = (action: string) => {
+    console.log(`执行个人操作: ${action}`);
+    closeContextMenu();
+    
+    switch(action) {
+      case 'profilePage':
+        console.log('打开个人主页');
+        navigate('/profile');
+        break;
+      case 'accountSettings':
+        console.log('打开账号设置');
+        api.info({
+          message: '账号设置',
+          description: '账号设置功能开发中，敬请期待！',
+        });
+        break;
+      case 'privacy':
+        console.log('打开隐私设置');
+        api.info({
+          message: '隐私设置',
+          description: '隐私设置功能开发中，敬请期待！',
+        });
+        break;
+      case 'notifications':
+        console.log('打开通知设置');
+        api.info({
+          message: '通知设置',
+          description: '通知设置功能开发中，敬请期待！',
+        });
+        break;
+      case 'help':
+        console.log('打开帮助中心');
+        api.info({
+          message: '帮助中心',
+          description: '帮助中心功能开发中，敬请期待！',
+        });
+        break;
+      case 'feedback':
+        console.log('打开反馈建议');
+        api.info({
+          message: '反馈建议',
+          description: '反馈建议功能开发中，敬请期待！',
+        });
+        break;
+      case 'logout':
+        console.log('退出登录');
+        api.warning({
+          message: '退出登录',
+          description: '是否确定退出登录？（此功能需要确认对话框）',
+        });
+        // TODO: 添加确认对话框后再执行 logout
+        break;
+    }
+  };
+
   // 处理菜单操作
-  const handleMenuAction = (action: string, userId: string) => {
+  const handleMenuAction = async (action: string, userId: string) => {
     console.log(`执行操作: ${action}`, userId);
     const targetUser = users.find(u => u.userId === userId);
     
     switch(action) {
       case 'privateMessage':
         console.log('私信用户:', targetUser);
+        api.info({
+          message: '私信功能',
+          description: '私信功能开发中，敬请期待！',
+        });
         break;
       case 'addFriend':
         console.log('添加好友:', targetUser);
+        api.info({
+          message: '添加好友',
+          description: '好友功能开发中，敬请期待！',
+        });
         break;
       case 'viewProfile':
         console.log('查看用户资料:', targetUser);
+        // 跳转到用户资料页面，传递userId参数
         navigate(`/user/${userId}`);
         break;
       case 'report':
         console.log('举报用户:', targetUser);
+        api.info({
+          message: '举报功能',
+          description: '举报功能开发中，敬请期待！',
+        });
         break;
       case 'mute':
         console.log('禁言用户:', targetUser);
+        api.info({
+          message: '禁言功能',
+          description: '禁言功能开发中，敬请期待！',
+        });
         break;
       case 'kick':
         console.log('踢出用户:', targetUser);
+        api.info({
+          message: '踢出功能',
+          description: '踢出功能开发中，敬请期待！',
+        });
         break;
+      case 'setAdmin':
+        await handleSetAdmin(userId);
+        break;
+      case 'removeAdmin':
+        await handleRemoveAdmin(userId);
+        break;
+    }
+  };
+
+  // 设置为管理员
+  const handleSetAdmin = async (userId: string) => {
+    if (!currentRoomMember?.roomId) return;
+    
+    // 获取目标用户的成员信息
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      // 需要先获取该用户的memberId
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        userId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      const response = await memberService.setAdmin(
+        currentRoomMember.roomId,
+        { memberid: memberInfoResponse.data.memberId }
+      );
+      
+      if (response.code === 200) {
+        api.success({
+          message: '设置成功',
+          description: '已将该用户设置为管理员',
+        });
+        // TODO: 刷新成员列表或更新本地状态
+      } else {
+        api.error({
+          message: '设置失败',
+          description: response.message || '设置管理员失败',
+        });
+      }
+    } catch (err) {
+      console.error('设置管理员失败:', err);
+      api.error({
+        message: '设置失败',
+        description: '网络错误，请稍后重试',
+      });
+    }
+  };
+
+  // 解除管理员
+  const handleRemoveAdmin = async (userId: string) => {
+    if (!currentRoomMember?.roomId) return;
+    
+    // 获取目标用户的成员信息
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      // 需要先获取该用户的memberId
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        userId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      const response = await memberService.removeAdmin(
+        currentRoomMember.roomId,
+        { memberid: memberInfoResponse.data.memberId }
+      );
+      
+      if (response.code === 200) {
+        api.success({
+          message: '解除成功',
+          description: '已将该用户解除管理员身份',
+        });
+        // TODO: 刷新成员列表或更新本地状态
+      } else {
+        api.error({
+          message: '解除失败',
+          description: response.message || '解除管理员失败',
+        });
+      }
+    } catch (err) {
+      console.error('解除管理员失败:', err);
+      api.error({
+        message: '解除失败',
+        description: '网络错误，请稍后重试',
+      });
     }
   };
 
   // 生成菜单项
   const generateMenuItems = (userId: string): MenuItemType[] => {
+    // 判断是否是点击自己
+    const isSelf = user?.userId === userId;
+    
+    // 如果点击的是自己，显示个人菜单（与 Sidebar 相同）
+    if (isSelf) {
+      return [
+        MenuItems.profilePage(() => handleSelfMenuAction('profilePage')),
+        MenuItems.accountSettings(() => handleSelfMenuAction('accountSettings')),
+        MenuItems.privacy(() => handleSelfMenuAction('privacy')),
+        MenuItems.notifications(() => handleSelfMenuAction('notifications')),
+        createDivider(),
+        MenuItems.help(() => handleSelfMenuAction('help')),
+        MenuItems.feedback(() => handleSelfMenuAction('feedback')),
+        createDivider(),
+        MenuItems.logout(() => handleSelfMenuAction('logout')),
+      ];
+    }
+    
+    // 如果点击的是他人，显示用户操作菜单
+    const targetUser = users.find(u => u.userId === userId);
+    const targetMember = targetUser as unknown as { roomRole?: string };
+    const isAdmin = targetMember?.roomRole === 'admin';
+    const canManageAdmins = permissionChecker.canSetAdmin(user, currentRoomMember);
+    
     return [
       MenuItems.privateMessage(() => handleMenuAction('privateMessage', userId)),
       MenuItems.addFriend(() => handleMenuAction('addFriend', userId)),
@@ -67,6 +291,14 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
       MenuItems.kick(
         () => handleMenuAction('kick', userId),
         !permissionChecker.canRemoveMember(user, currentRoomMember)
+      ),
+      MenuItems.setAdmin(
+        () => handleMenuAction('setAdmin', userId),
+        !canManageAdmins || isAdmin
+      ),
+      MenuItems.removeAdmin(
+        () => handleMenuAction('removeAdmin', userId),
+        !canManageAdmins || !isAdmin
       ),
     ];
   };
@@ -87,7 +319,9 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
   const onlineUsers = users.filter(user => user.status === 'online');
 
   return (
-    <div className="h-full w-60 bg-ground flex flex-col border-l border-grayborder">
+    <>
+      {contextHolder}
+      <div className="h-full w-60 bg-ground flex flex-col border-l border-grayborder">
       {/* 在线用户头像区 */}
       <div className="px-6 pt-5 border-grayborder">
         <div className="flex justify-between items-center ">
@@ -158,6 +392,7 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
         )}
       </div>
     </div>
+    </>
   );
 };
 

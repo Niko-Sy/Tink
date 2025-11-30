@@ -8,15 +8,15 @@ import Sidebar from './components/Sidebar';
 import AddChatRoomModal from './components/AddChatRoomModal';
 import ChatRoomSettingsModal from './components/ChatRoomSettingsModal';
 import HomePage from './components/HomePage';
-import type { ChatRoomSettings } from './components/ChatRoomSettingsModal';
-import type { User, Message, ChatRoom, ChatRoomMember } from './types';
 import { useAuth } from './context/AuthContext';
 import { permissionChecker } from './utils/permissions';
-// import { useNavigate } from 'react-router-dom';
+import { useChatRooms } from './hooks/useChatRooms';
+import { useMessages } from './hooks/useMessages';
+import { useRoomMembers } from './hooks/useRoomMembers';
+import { useWebSocketEvents } from './hooks/useWebSocketEvents';
 
 const App: React.FC = () => {
   const { user, currentRoomMember, setCurrentRoomMember } = useAuth();
-  // const navigate = useNavigate();
   const [api, contextHolder] = notification.useNotification({
     placement: 'topRight',
     top: 24,
@@ -24,135 +24,135 @@ const App: React.FC = () => {
     maxCount: 3,
   });
   
+  // 通知回调函数
+  const showSuccess = (message: string, description: string | React.ReactNode, duration = 2) => {
+    api.success({ message, description, duration });
+  };
+  
+  const showError = (message: string, description: string, duration = 2) => {
+    api.error({ message, description, duration });
+  };
+  
+  const showWarning = (message: string, description: string, duration = 3) => {
+    api.warning({ message, description, duration });
+  };
+  
+  const showInfo = (message: string, description: string, duration = 2) => {
+    api.info({ message, description, duration });
+  };
+  
+  // 聊天室管理
+  const {
+    chatRooms,
+    activeChatRoom,
+    setActiveChatRoom,
+    handleJoinRoom,
+    handleCreateRoom,
+    handleSaveSettings,
+    handleDeleteRoom,
+    getCurrentRoomSettings,
+    updateRoomUnread,
+    clearRoomUnread,
+    removeRoom,
+  } = useChatRooms({
+    user,
+    setCurrentRoomMember,
+    onSuccess: showSuccess,
+    onError: showError,
+    onWarning: showWarning,
+  });
+  
+  // 消息管理
+  const {
+    roomMessages,
+    fetchMessages,
+    sendMessage,
+    addMessageToRoom,
+    updateMessage,
+    deleteMessage,
+  } = useMessages({
+    user,
+    onError: showError,
+  });
+  
+  // 成员管理
+  const {
+    users,
+    fetchRoomMembers,
+    fetchCurrentMemberInfo,
+    updateUserStatus,
+    removeUser,
+  } = useRoomMembers({
+    user,
+    setCurrentRoomMember,
+  });
+  
+  // WebSocket 事件处理
+  useWebSocketEvents({
+    user,
+    activeChatRoom,
+    addMessageToRoom,
+    updateMessage,
+    deleteMessage,
+    updateRoomUnread,
+    updateUserStatus,
+    fetchRoomMembers,
+    removeUser,
+    removeRoom,
+    onWarning: showWarning,
+  });
+  
+  // 当前聊天室的消息
+  const messages = roomMessages[activeChatRoom] || [];
+  
+  // UI 状态
+  const [inputValue, setInputValue] = useState('');
+  const [showEmojiPanel, setShowEmojiPanel] = useState(false);
+  const [showAddRoomModal, setShowAddRoomModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showUserPanel, setShowUserPanel] = useState(true);
+  
   // 禁用全局右键菜单
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
     };
-
     document.addEventListener('contextmenu', handleContextMenu);
-
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
     };
   }, []);
 
-  // 聊天室数据
-  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([
-    { 
-      roomId: '100000001',
-      name: '主页', 
-      description: '聊天室主页',
-      icon: 'fas fa-home', 
-      type: 'public',
-      onlineCount: 0,
-      peopleCount: 0,
-      createdTime: new Date().toISOString(),
-      lastMessageTime: new Date().toISOString(),
-      unread: 0 
-    },
-    { 
-      roomId: '100000002',
-      name: '综合文字', 
-      description: '综合聊天室',
-      icon: 'fas fa-comments', 
-      type: 'public',
-      onlineCount: 8,
-      peopleCount: 156,
-      createdTime: new Date().toISOString(),
-      lastMessageTime: new Date().toISOString(),
-      unread: 12 
-    },
-  ]);
-  
-  // 用户列表
-  const [users] = useState<User[]>([
-    { userId: 'U123456789', name: '张伟', status: 'online', avatar: 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg' },
-    { userId: 'U123456790', name: '李娜', status: 'online', avatar: 'https://ai-public.mastergo.com/ai/img_res/945a373ac8cba538922e3056a3952a11.jpg' },
-    { userId: 'U123456791', name: '王强', status: 'away', avatar: 'https://ai-public.mastergo.com/ai/img_res/7adaab35c68fc4617a58a8f92fab236e.jpg' },
-    { userId: 'U123456792', name: '陈丽', status: 'offline', avatar: 'https://ai-public.mastergo.com/ai/img_res/5859f4b402a6ff0d8bea996cd06fdc92.jpg' },
-    { userId: 'U123456793', name: '刘洋', status: 'online', avatar: 'https://ai-public.mastergo.com/ai/img_res/5c984aeccb5ac5c312115f2fd5156392.jpg' },
-    { userId: 'U123456794', name: '赵敏', status: 'online', avatar: 'https://ai-public.mastergo.com/ai/img_res/7a980361c3d1da375258bf634ee252e2.jpg' },
-    { userId: 'U123456795', name: '孙浩', status: 'offline', avatar: 'https://ai-public.mastergo.com/ai/img_res/32fc8c243d88ae9356b7c163b7a074fb.jpg' },
-    { userId: 'U123456796', name: '周婷', status: 'online', avatar: 'https://ai-public.mastergo.com/ai/img_res/a6c192a6ab8c78559ecbcfa7450ea237.jpg' },
-  ]);
-  
-  // 消息记录
-  const [messages, setMessages] = useState<Message[]>([
-    { messageId: 'M001', roomId: '100000002', userId: 'U123456790', userName: '李娜', importmessageId: '', type: 'text', text: '大家好，欢迎来到综合文字聊天室！', time: '14:30', isOwn: false },
-    { messageId: 'M002', roomId: '100000002', userId: 'U123456789', userName: '张伟', importmessageId: '', type: 'text', text: '你好李娜，很高兴加入这个聊天室', time: '14:32', isOwn: true },
-    { messageId: 'M003', roomId: '100000002', userId: 'U123456791', userName: '王强', importmessageId: '', type: 'text', text: '今天天气不错，适合聊天', time: '14:35', isOwn: false },
-    { messageId: 'M004', roomId: '100000002', userId: 'U123456792', userName: '陈丽', importmessageId: '', type: 'text', text: '确实，阳光明媚的好心情', time: '14:36', isOwn: false },
-    { messageId: 'M005', roomId: '100000002', userId: 'U123456789', userName: '张伟', importmessageId: '', type: 'text', text: '有什么好的话题推荐吗？', time: '14:40', isOwn: true },
-    { messageId: 'M006', roomId: '100000002', userId: 'U123456793', userName: '刘洋', importmessageId: '', type: 'text', text: '最近有什么好看的电影吗？', time: '14:42', isOwn: false },
-    { messageId: 'M007', roomId: '100000002', userId: 'U123456794', userName: '赵敏', importmessageId: '', type: 'text', text: '我推荐《星际穿越》，科幻迷必看', time: '14:45', isOwn: false },
-    { messageId: 'M008', roomId: '100000002', userId: 'U123456789', userName: '张伟', importmessageId: '', type: 'text', text: '谢谢推荐，周末去看看', time: '14:47', isOwn: true },
-  ]);
-  
-  // 当前选中的聊天室
-  const [activeChatRoom, setActiveChatRoom] = useState('100000002');
-  
-  // 输入框内容
-  const [inputValue, setInputValue] = useState('');
-  
-  // 表情面板显示状态
-  const [showEmojiPanel, setShowEmojiPanel] = useState(false);
-  
-  // 添加聊天室弹窗显示状态
-  const [showAddRoomModal, setShowAddRoomModal] = useState(false);
-  
-  // 聊天室设置弹窗显示状态
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  
-  // 右侧边栏显示状态
-  const [showUserPanel, setShowUserPanel] = useState(true);
-
-  // 模拟：当切换聊天室时，设置当前用户的成员信息
+  // 切换聊天室时获取成员信息和消息
   useEffect(() => {
-    if (user && activeChatRoom !== '100000001') {
-      // 模拟从后端获取当前用户在该聊天室的成员信息
-      const mockMember: ChatRoomMember = {
-        memberId: `M${user.userId}_${activeChatRoom}`,
-        roomId: activeChatRoom,
-        userId: user.userId,
-        roomRole: activeChatRoom === '100000002' ? 'owner' : 'member', // 模拟：在综合文字是owner
-        isMuted: false,
-        joinedAt: new Date().toISOString(),
-        isActive: true,
-      };
-      setCurrentRoomMember(mockMember);
-    } else {
-      setCurrentRoomMember(null);
+    if (activeChatRoom !== '100000001') {
+      fetchRoomMembers(activeChatRoom);
+      fetchCurrentMemberInfo(activeChatRoom);
+      fetchMessages(activeChatRoom);
+      clearRoomUnread(activeChatRoom);
     }
-  }, [activeChatRoom, user, setCurrentRoomMember]);
+  }, [activeChatRoom, fetchRoomMembers, fetchCurrentMemberInfo, fetchMessages, clearRoomUnread]);
   
   // 发送消息（添加权限检查）
-  const handleSend = () => {
-    if (inputValue.trim() !== '') {
-      // 权限检查：是否可以发送消息
-      if (!permissionChecker.canSendMessage(user, currentRoomMember)) {
-        const muteReason = permissionChecker.getMuteReason(user, currentRoomMember);
-        api.error({
-          message: '无法发送消息',
-          description: muteReason || '你没有发送消息的权限',
-          duration: 3,
-        });
-        return;
-      }
-      const newMessage: Message = {
-        messageId: `M${String(messages.length + 1).padStart(3, '0')}`,
-        userId: user?.userId || "U123456789",
-        userName: user?.username || '张伟',
-        text: inputValue,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isOwn: true,
-        roomId: activeChatRoom,
-        importmessageId: '',
-        type: 'text'
-      };
-      setMessages([...messages, newMessage]);
-      setInputValue('');
-      setShowEmojiPanel(false);
+  const handleSend = async () => {
+    if (inputValue.trim() === '' || !user) return;
+    
+    // 权限检查：是否可以发送消息
+    if (!permissionChecker.canSendMessage(user, currentRoomMember)) {
+      const muteReason = permissionChecker.getMuteReason(user, currentRoomMember);
+      showError('无法发送消息', muteReason || '你没有发送消息的权限', 3);
+      return;
+    }
+    
+    const messageText = inputValue.trim();
+    setInputValue('');
+    setShowEmojiPanel(false);
+    
+    try {
+      await sendMessage(activeChatRoom, messageText);
+    } catch (err) {
+      // 发送失败，恢复输入框内容
+      setInputValue(messageText);
     }
   };
   
@@ -164,18 +164,10 @@ const App: React.FC = () => {
   // 复制聊天室ID
   const copyRoomId = (roomId: string) => {
     navigator.clipboard.writeText(roomId).then(() => {
-      api.success({
-        message: '复制成功',
-        description: `聊天室ID ${roomId} 已复制到剪贴板`,
-        duration: 2,
-      });
+      showSuccess('复制成功', `聊天室ID ${roomId} 已复制到剪贴板`, 2);
     }).catch(err => {
       console.error('复制失败:', err);
-      api.error({
-        message: '复制失败',
-        description: '请手动复制聊天室ID',
-        duration: 2,
-      });
+      showError('复制失败', '请手动复制聊天室ID', 2);
     });
   };
   
@@ -184,143 +176,29 @@ const App: React.FC = () => {
     setShowAddRoomModal(true);
   };
 
-  // 处理加入聊天室
-  const handleJoinRoom = (roomId: string, password: string) => {
-    // TODO: 调用后端API验证并加入聊天室
-    console.log('加入聊天室:', roomId, password);
-    
-    // 验证聊天室ID格式（9位数字）
-    if (!/^\d{9}$/.test(roomId)) {
-      api.error({
-        message: '加入失败',
-        description: '聊天室ID必须是9位数字！',
-        duration: 2,
-      });
-      return;
-    }
-    
-    // 模拟加入成功
-    const newRoom: ChatRoom = {
-      name: `聊天室-${roomId.slice(-4)}`,
-      icon: 'fas fa-comments',
-      unread: 0,
-      roomId: roomId,
-      description: '',
-      type: 'public',
-      onlineCount: 1,
-      peopleCount: 1,
-      createdTime: new Date().toISOString(),
-      lastMessageTime: new Date().toISOString()
-    };
-    
-    setChatRooms([...chatRooms, newRoom]);
-    api.success({
-      message: '成功加入聊天室',
-      description: `已加入聊天室 ${newRoom.name}`,
-      duration: 2,
-    });
-  };
-
-  // 处理创建聊天室
-  const handleCreateRoom = (name: string, description: string, password: string) => {
-    // TODO: 调用后端API创建聊天室
-    console.log('创建聊天室:', name, description, password);
-    
-    // 生成9位数字的聊天室ID
-    const newRoomId = Math.floor(100000000 + Math.random() * 900000000).toString();
-    
-    const newRoom: ChatRoom = {
-      name: name,
-      icon: 'fas fa-comments',
-      unread: 0,
-      roomId: newRoomId,
-      description: description,
-      type: password ? 'protected' : 'public',
-      password: password,
-      onlineCount: 1,
-      peopleCount: 1,
-      createdTime: new Date().toISOString(),
-      lastMessageTime: new Date().toISOString()
-    };
-    
-    setChatRooms([...chatRooms, newRoom]);
-    
-    // 复制ID到剪贴板
-    navigator.clipboard.writeText(newRoomId).then(() => {
-      api.success({
-        message: '聊天室创建成功',
-        description: (
-          <div>
-            <p>聊天室ID: <strong>{newRoomId}</strong></p>
-            <p className="text-xs text-gray-400 mt-1">✓ ID已复制到剪贴板，请妥善保管密码</p>
-          </div>
-        ),
-        duration: 4,
-      });
-    }).catch(() => {
-      api.success({
-        message: '聊天室创建成功',
-        description: (
-          <div>
-            <p>聊天室ID: <strong>{newRoomId}</strong></p>
-            <p className="text-xs text-yellow-400 mt-1">⚠ 请手动复制聊天室ID</p>
-          </div>
-        ),
-        duration: 4,
-      });
-    });
-  };
-
-  // 处理聊天室设置保存（添加权限检查）
-  const handleSaveSettings = (settings: ChatRoomSettings) => {
-    // 权限检查：是否可以编辑聊天室信息
-    if (!permissionChecker.canEditRoomInfo(user, currentRoomMember)) {
-      api.error({
-        message: '无法保存设置',
-        description: '你没有编辑聊天室信息的权限（需要管理员权限）',
-        duration: 3,
-      });
-      return;
-    }
-
-    // TODO: 调用后端API保存聊天室设置
-    console.log('保存聊天室设置:', settings);
-    
-    // 更新当前聊天室信息
-    setChatRooms(chatRooms.map(room => 
-      room.roomId === activeChatRoom 
-        ? { ...room, name: settings.name, icon: settings.icon }
-        : room
-    ));
-    
-    api.success({
-      message: '✓ 设置保存成功',
-      description: '聊天室信息已更新',
-      duration: 2,
-    });
-  };
-
-  // 获取当前聊天室设置
-  const getCurrentRoomSettings = (): ChatRoomSettings => {
-    const currentRoom = chatRooms.find(room => room.roomId === activeChatRoom);
-    return {
-      name: currentRoom?.name || '',
-      description: '这是一个很棒的聊天室', // TODO: 从后端获取
-      icon: currentRoom?.icon || 'fas fa-comments',
-      type: 'public', // TODO: 从后端获取
-      password: '', // TODO: 从后端获取
-    };
-  };
-
   // 处理邀请好友
   const handleInviteFriend = () => {
-    // TODO: 实现邀请好友功能
     console.log('邀请好友');
-    api.info({
-      message: '邀请好友',
-      description: '邀请好友功能开发中，敬请期待！',
-      duration: 2,
-    });
+    showInfo('邀请好友', '邀请好友功能开发中，敬请期待！', 2);
+  };
+  
+  // 包装聊天室设置保存（添加权限检查）
+  const handleSaveSettingsWithPermission = async (settings: Parameters<typeof handleSaveSettings>[0]) => {
+    if (!permissionChecker.canEditRoomInfo(user, currentRoomMember)) {
+      showError('无法保存设置', '你没有编辑聊天室信息的权限（需要管理员权限）', 3);
+      return;
+    }
+    await handleSaveSettings(settings);
+  };
+
+  // 包装聊天室删除（添加权限检查）
+  const handleDeleteRoomWithPermission = async () => {
+    if (!currentRoomMember || currentRoomMember.roomRole !== 'owner') {
+      showError('无法解散聊天室', '只有房主才能解散聊天室', 3);
+      return;
+    }
+    await handleDeleteRoom();
+    setShowSettingsModal(false);
   };
 
   // 表情数据
@@ -525,8 +403,10 @@ const App: React.FC = () => {
       <ChatRoomSettingsModal
         isOpen={showSettingsModal}
         onClose={() => setShowSettingsModal(false)}
-        onSave={handleSaveSettings}
+        onSave={handleSaveSettingsWithPermission}
+        onDelete={handleDeleteRoomWithPermission}
         currentSettings={getCurrentRoomSettings()}
+        canDelete={currentRoomMember?.roomRole === 'owner'}
       />
     </div>
   );

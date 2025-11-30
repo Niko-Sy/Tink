@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CloseOutlined, PlusOutlined, LoginOutlined } from '@ant-design/icons';
 
 interface AddChatRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
   onJoinRoom: (roomId: string, password: string) => void;
-  onCreateRoom: (name: string, description: string, password: string) => void;
+  onCreateRoom: (name: string, description: string, password: string, type: 'public' | 'private' | 'protected') => void;
 }
 
 const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
@@ -22,7 +22,8 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
     // 创建聊天室
     createName: '',
     createDescription: '',
-    createPassword: ''
+    createPassword: '',
+    createType: 'public' as 'public' | 'private' | 'protected'
   });
   const [errors, setErrors] = useState({
     joinRoomId: '',
@@ -32,6 +33,20 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
     createPassword: ''
   });
 
+  // 聊天室类型选项
+  const typeOptions = [
+    { value: 'public', label: '🌐 公开', description: '任何人都可以直接加入' },
+    { value: 'protected', label: '🔒 受保护', description: '需要密码才能加入' },
+    { value: 'private', label: '🔐 私密', description: '仅受邀请的成员可以加入' },
+  ];
+
+  // 当弹窗打开时重置表单
+  useEffect(() => {
+    if (isOpen) {
+      resetForm();
+    }
+  }, [isOpen]);
+
   // 重置表单
   const resetForm = () => {
     setFormData({
@@ -39,7 +54,8 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
       joinPassword: '',
       createName: '',
       createDescription: '',
-      createPassword: ''
+      createPassword: '',
+      createType: 'public'
     });
     setErrors({
       joinRoomId: '',
@@ -75,10 +91,7 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
       isValid = false;
     }
 
-    if (!formData.joinPassword.trim()) {
-      newErrors.joinPassword = '请输入密码';
-      isValid = false;
-    }
+    // 密码为可选，不再强制验证
 
     setErrors(newErrors);
     return isValid;
@@ -111,12 +124,15 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
       isValid = false;
     }
 
-    if (!formData.createPassword.trim()) {
-      newErrors.createPassword = '请设置聊天室密码';
-      isValid = false;
-    } else if (formData.createPassword.length < 6) {
-      newErrors.createPassword = '密码至少6个字符';
-      isValid = false;
+    // 只有受保护类型才需要密码
+    if (formData.createType === 'protected') {
+      if (!formData.createPassword.trim()) {
+        newErrors.createPassword = '受保护的聊天室需要设置密码';
+        isValid = false;
+      } else if (formData.createPassword.length < 6) {
+        newErrors.createPassword = '密码至少6个字符';
+        isValid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -135,7 +151,12 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
   const handleCreate = () => {
     if (!validateCreateForm()) return;
     
-    onCreateRoom(formData.createName, formData.createDescription, formData.createPassword);
+    onCreateRoom(
+      formData.createName, 
+      formData.createDescription, 
+      formData.createType === 'protected' ? formData.createPassword : '',
+      formData.createType
+    );
     handleClose();
   };
 
@@ -162,9 +183,9 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
       ></div>
 
       {/* 弹窗内容 */}
-      <div className="relative bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-gray-700 animate-scale-in">
+      <div className="relative bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 border border-gray-700 animate-scale-in max-h-[90vh] overflow-y-auto">
         {/* 头部 */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 sticky top-0 bg-gray-800 z-10">
           <h2 className="text-xl font-bold text-white">添加聊天室</h2>
           <button
             onClick={handleClose}
@@ -207,7 +228,7 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  聊天室ID
+                  聊天室ID *
                 </label>
                 <input
                   type="text"
@@ -227,7 +248,7 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  聊天室密码
+                  聊天室密码 <span className="text-gray-500">(可选)</span>
                 </label>
                 <input
                   type="password"
@@ -236,11 +257,12 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
                   className={`w-full bg-gray-700 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 ${
                     errors.joinPassword ? 'focus:ring-red-500 border border-red-500' : 'focus:ring-blue-500'
                   }`}
-                  placeholder="请输入聊天室密码"
+                  placeholder="如果是受保护的聊天室，请输入密码"
                 />
                 {errors.joinPassword && (
                   <p className="mt-1 text-sm text-red-500">{errors.joinPassword}</p>
                 )}
+                <p className="mt-1 text-xs text-gray-400">公开聊天室无需密码即可加入</p>
               </div>
 
               <button
@@ -256,7 +278,7 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  聊天室名称
+                  聊天室名称 *
                 </label>
                 <input
                   type="text"
@@ -274,7 +296,7 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
 
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  聊天室简介
+                  聊天室简介 *
                 </label>
                 <textarea
                   value={formData.createDescription}
@@ -290,28 +312,68 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
                 )}
               </div>
 
+              {/* 聊天室类型选择 */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  聊天室密码
+                  聊天室类型
                 </label>
-                <input
-                  type="password"
-                  value={formData.createPassword}
-                  onChange={(e) => handleInputChange('createPassword', e.target.value)}
-                  className={`w-full bg-gray-700 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 ${
-                    errors.createPassword ? 'focus:ring-red-500 border border-red-500' : 'focus:ring-blue-500'
-                  }`}
-                  placeholder="设置聊天室密码（至少6位）"
-                />
-                {errors.createPassword && (
-                  <p className="mt-1 text-sm text-red-500">{errors.createPassword}</p>
-                )}
-                <p className="mt-1 text-xs text-gray-400">此密码用于其他用户加入聊天室</p>
+                <div className="space-y-2">
+                  {typeOptions.map((option) => (
+                    <div
+                      key={option.value}
+                      onClick={() => handleInputChange('createType', option.value)}
+                      className={`p-3 rounded-lg cursor-pointer transition-all ${
+                        formData.createType === option.value
+                          ? 'bg-blue-600 border-2 border-blue-400'
+                          : 'bg-gray-700 border-2 border-gray-600 hover:border-gray-500'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center mr-3 ${
+                          formData.createType === option.value
+                            ? 'border-white'
+                            : 'border-gray-400'
+                        }`}>
+                          {formData.createType === option.value && (
+                            <div className="w-2 h-2 rounded-full bg-white"></div>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-white text-sm">{option.label}</div>
+                          <div className="text-xs text-gray-300">{option.description}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* 密码输入（仅受保护类型显示） */}
+              {formData.createType === 'protected' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    聊天室密码 *
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.createPassword}
+                    onChange={(e) => handleInputChange('createPassword', e.target.value)}
+                    className={`w-full bg-gray-700 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 ${
+                      errors.createPassword ? 'focus:ring-red-500 border border-red-500' : 'focus:ring-blue-500'
+                    }`}
+                    placeholder="设置聊天室密码（至少6位）"
+                    autoFocus
+                  />
+                  {errors.createPassword && (
+                    <p className="mt-1 text-sm text-red-500">{errors.createPassword}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400">其他用户需要输入此密码才能加入</p>
+                </div>
+              )}
 
               <button
                 onClick={handleCreate}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors focus:outline-none mt-4  border-0"
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-lg transition-colors focus:outline-none mt-4 border-0"
               >
                 <PlusOutlined className="mr-2" />
                 创建聊天室

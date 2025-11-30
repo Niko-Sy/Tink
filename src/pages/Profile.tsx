@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
@@ -12,8 +12,17 @@ import {
   PhoneOutlined,
   IdcardOutlined,
   SmileOutlined,
-  CameraOutlined
+  CameraOutlined,
+  LoadingOutlined
 } from '@ant-design/icons';
+import { notification } from 'antd';
+import { 
+  userService, 
+  authService,
+  type UpdateUserProfileRequest,
+  type ChangePasswordRequest,
+  type ApiError 
+} from '../services';
 
 interface UserProfile {
   userId: string;
@@ -33,16 +42,17 @@ interface UserProfile {
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUserInfo } = useAuth();
+  const [api, notificationContextHolder] = notification.useNotification();
   
-  // 模拟用户数据（实际应该从后端获取）
+  // 用户数据
   const [profile, setProfile] = useState<UserProfile>({
-    userId: user?.userId || 'U' + Math.random().toString().slice(2, 11),
-    username: user?.username || '张伟',
+    userId: user?.userId || '',
+    username: user?.username || '',
     password: '******',
-    nickname: user?.nickname || user?.username || '张伟',
-    phone: user?.phone || '138****8888',
-    email: user?.email || 'zhangwei@example.com',
+    nickname: user?.nickname || user?.username || '',
+    phone: user?.phone || '',
+    email: user?.email || '',
     avatar: user?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
     signature: user?.signature || '这个人很懒，什么都没有留下~',
     onlineStatus: user?.onlineStatus || 'online',
@@ -55,6 +65,65 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<UserProfile>(profile);
   const [showPasswordEdit, setShowPasswordEdit] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [oldPassword, setOldPassword] = useState('');
+  const [, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // 同步 user 变化到 profile
+  useEffect(() => {
+    if (user) {
+      setProfile({
+        userId: user.userId || '',
+        username: user.username || '',
+        password: '******',
+        nickname: user.nickname || user.username || '',
+        phone: user.phone || '',
+        email: user.email || '',
+        avatar: user.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
+        signature: user.signature || '这个人很懒，什么都没有留下~',
+        onlineStatus: user.onlineStatus || 'online',
+        accountStatus: user.accountStatus || 'active',
+        systemRole: user.systemRole || 'user',
+        globalMuteStatus: user.globalMuteStatus || 'unmuted',
+        globalMuteEndTime: user.globalMuteEndTime
+      });
+    }
+  }, [user]);
+
+  // 从后端获取最新用户信息
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      setIsLoading(true);
+      try {
+        const response = await userService.getCurrentUser();
+        if (response.code === 200 && response.data) {
+          const userData = response.data;
+          setProfile({
+            userId: userData.userId || '',
+            username: userData.username || '',
+            password: '******',
+            nickname: userData.nickname || userData.username || '',
+            phone: userData.phone || '',
+            email: userData.email || '',
+            avatar: userData.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
+            signature: userData.signature || '这个人很懒，什么都没有留下~',
+            onlineStatus: userData.onlineStatus || 'online',
+            accountStatus: userData.accountStatus || 'active',
+            systemRole: userData.systemRole || 'user',
+            globalMuteStatus: userData.globalMuteStatus || 'unmuted',
+            globalMuteEndTime: userData.globalMuteEndTime
+          });
+        }
+      } catch (err) {
+        console.error('获取用户信息失败:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserInfo();
+  }, []);
 
   // 状态选项
   const onlineStatusOptions = [
@@ -82,12 +151,112 @@ const Profile: React.FC = () => {
   };
 
   // 处理保存
-  const handleSave = () => {
-    setProfile(editedProfile);
-    setIsEditing(false);
-    setShowPasswordEdit(false);
-    // TODO: 调用后端API保存数据
-    console.log('保存用户资料:', editedProfile);
+  const handleSave = async () => {
+    setIsSaving(true);
+    
+    try {
+      // 准备更新数据（包含头像）
+      const updateData: UpdateUserProfileRequest = {
+        nickname: editedProfile.nickname,
+        signature: editedProfile.signature,
+        phone: editedProfile.phone,
+        email: editedProfile.email,
+        avatar: editedProfile.avatar !== profile.avatar ? editedProfile.avatar : undefined,
+      };
+      
+      const response = await userService.updateUserProfile(updateData);
+      
+      if (response.code === 200) {
+        setProfile(editedProfile);
+        setIsEditing(false);
+        
+        // 刷新 AuthContext 中的用户信息
+        await refreshUserInfo();
+        
+        api.success({
+          message: '保存成功',
+          description: '个人资料已更新',
+          duration: 2,
+        });
+        
+        // 如果修改了密码
+        if (showPasswordEdit && newPassword && oldPassword) {
+          await handleChangePassword();
+        }
+      } else {
+        api.error({
+          message: '保存失败',
+          description: response.message || '无法保存资料',
+          duration: 2,
+        });
+      }
+    } catch (err) {
+      const apiError = err as ApiError;
+      api.error({
+        message: '保存失败',
+        description: apiError.message || '保存资料时发生错误',
+        duration: 2,
+      });
+    } finally {
+      setIsSaving(false);
+      setShowPasswordEdit(false);
+      setNewPassword('');
+      setOldPassword('');
+    }
+  };
+
+  // 处理修改密码
+  const handleChangePassword = async () => {
+    if (!oldPassword || !newPassword) {
+      api.warning({
+        message: '密码不能为空',
+        description: '请输入旧密码和新密码',
+        duration: 2,
+      });
+      return;
+    }
+    
+    if (newPassword.length < 6) {
+      api.warning({
+        message: '密码太短',
+        description: '新密码至少6个字符',
+        duration: 2,
+      });
+      return;
+    }
+    
+    try {
+      const data: ChangePasswordRequest = {
+        oldPassword,
+        newPassword,
+      };
+      
+      const response = await authService.changePassword(data);
+      
+      if (response.code === 200) {
+        api.success({
+          message: '密码修改成功',
+          description: '请使用新密码重新登录',
+          duration: 2,
+        });
+        setShowPasswordEdit(false);
+        setNewPassword('');
+        setOldPassword('');
+      } else {
+        api.error({
+          message: '密码修改失败',
+          description: response.message || '无法修改密码',
+          duration: 2,
+        });
+      }
+    } catch (err) {
+      const apiError = err as ApiError;
+      api.error({
+        message: '密码修改失败',
+        description: apiError.message || '修改密码时发生错误',
+        duration: 2,
+      });
+    }
   };
 
   // 处理取消
@@ -106,13 +275,69 @@ const Profile: React.FC = () => {
   };
 
   // 处理头像上传
-  const handleAvatarUpload = () => {
-    // TODO: 实现头像上传功能
-    console.log('上传头像');
+  const handleAvatarUpload = async () => {
+    // 创建一个隐藏的 file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/jpeg,image/png,image/gif,image/webp';
+    
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      // 验证文件
+      const validation = userService.validateAvatarFile(file);
+      if (!validation.valid) {
+        api.error({
+          message: '上传失败',
+          description: validation.message,
+          duration: 2,
+        });
+        return;
+      }
+      
+      setIsSaving(true);
+      
+      try {
+        const response = await userService.uploadAvatar(file);
+        
+        if (response.code === 200 && response.data) {
+          // API 返回完整 URL，直接使用
+          const avatarUrl = response.data.url;
+          
+          // 立即更新编辑状态的头像用于预览
+          setEditedProfile(prev => ({ ...prev, avatar: avatarUrl }));
+          
+          api.success({
+            message: '头像上传成功',
+            description: '预览已更新，点击保存以应用更改',
+            duration: 3,
+          });
+        } else {
+          api.error({
+            message: '上传失败',
+            description: response.message || '无法上传头像',
+            duration: 2,
+          });
+        }
+      } catch (err) {
+        const apiError = err as ApiError;
+        api.error({
+          message: '上传失败',
+          description: apiError.message || '上传头像时发生错误',
+          duration: 2,
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    };
+    
+    input.click();
   };
 
   return (
     <div className="min-h-screen w-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
+      {notificationContextHolder}
       {/* 顶部导航栏 */}
       <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -163,18 +388,22 @@ const Profile: React.FC = () => {
             <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
               {/* 头像 */}
               <div className="relative w-48 h-48 mx-auto mb-6">
-                {!isEditing && (<img
+                <img
                   src={isEditing ? editedProfile.avatar : profile.avatar}
                   alt="Avatar"
                   className="w-full h-full rounded-full object-cover border-4 border-gray-700"
-                />)}
+                />
                 {isEditing && (
                   <button
                     onClick={handleAvatarUpload}
-                    className="w-full h-full p-3 bg-blue-600 hover:bg-blue-700 rounded-full transition-colors focus:outline-none"
+                    disabled={isSaving}
+                    className="absolute inset-0 w-full h-full bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full transition-all focus:outline-none flex items-center justify-center"
                     title="更换头像"
                   >
-                    <CameraOutlined className="text-max" />
+                    <div className="text-center">
+                      <CameraOutlined className="text-4xl text-white mb-2" />
+                      <p className="text-white text-sm">{isSaving ? '上传中...' : '点击更换'}</p>
+                    </div>
                   </button>
                 )}
                 
@@ -247,19 +476,14 @@ const Profile: React.FC = () => {
                 <div className="grid grid-cols-3 gap-4 items-center">
                   <label className="text-gray-400 flex items-center">
                     <UserOutlined className="mr-2" />
-                    用户名
+                    账号
                   </label>
                   <div className="col-span-2">
                     <input
                       type="text"
-                      value={isEditing ? editedProfile.username : profile.username}
-                      onChange={(e) => handleInputChange('username', e.target.value)}
-                      disabled={!isEditing}
-                      className={`w-full rounded-lg py-3 px-4 focus:outline-none ${
-                        isEditing 
-                          ? 'bg-gray-700 text-white focus:ring-2 focus:ring-blue-500' 
-                          : 'bg-gray-900 text-gray-400 cursor-not-allowed'
-                      }`}
+                      value={profile.username}
+                      disabled
+                      className="w-full bg-gray-700 text-gray-500 rounded-lg py-3 px-4 cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -310,11 +534,42 @@ const Profile: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <input
-                        type="password"
-                        placeholder="输入新密码"
-                        className="w-full bg-gray-700 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
+                      <div className="space-y-2">
+                        <input
+                          type="password"
+                          value={oldPassword}
+                          onChange={(e) => setOldPassword(e.target.value)}
+                          placeholder="输入旧密码"
+                          className="w-full bg-gray-700 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="输入新密码"
+                          className="w-full bg-gray-700 text-white rounded-lg py-3 px-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={handleChangePassword}
+                            disabled={isSaving}
+                            className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors focus:outline-none disabled:opacity-50"
+                          >
+                            {isSaving ? <LoadingOutlined className="mr-2" /> : null}
+                            确认修改
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowPasswordEdit(false);
+                              setOldPassword('');
+                              setNewPassword('');
+                            }}
+                            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors focus:outline-none"
+                          >
+                            取消
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>

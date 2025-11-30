@@ -5,13 +5,9 @@ import { useAuth } from '../context/AuthContext';
 import LoadingScreen from '../components/LoadingScreen';
 import logo from '../assets/Tink_white.svg';
 
-interface LoginProps {
-  onLogin?: (userData: { userId: string; username: string; token: string; email?: string }) => void;
-}
-
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, register, error, clearError, loading } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false); // 控制页面加载动画
   const [isTransitioning, setIsTransitioning] = useState(false); // 控制切换动画
@@ -26,7 +22,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    api: ''  // API 错误
   });
 
   // 页面加载动画
@@ -37,13 +34,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     });
   }, []);
 
+  // 监听 AuthContext 的错误
+  useEffect(() => {
+    if (error) {
+      setErrors(prev => ({ ...prev, api: error }));
+      setIsLoggingIn(false);
+    }
+  }, [error]);
+
+  // 清除错误当切换模式时
+  useEffect(() => {
+    clearError();
+  }, [isLogin, clearError]);
+
   // 表单验证
   const validateForm = () => {
     const newErrors = {
       username: '',
       email: '',
       password: '',
-      confirmPassword: ''
+      confirmPassword: '',
+      api: ''
     };
     let isValid = true;
 
@@ -52,6 +63,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       isValid = false;
     } else if (formData.username.length < 3) {
       newErrors.username = '用户名至少3个字符';
+      isValid = false;
+    } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+      newErrors.username = '用户名只能包含字母、数字和下划线';
       isValid = false;
     }
 
@@ -69,6 +83,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     } else if (formData.password.length < 6) {
       newErrors.password = '密码至少6个字符';
       isValid = false;
+    } else if (formData.password.length > 20) {
+      newErrors.password = '密码最多20个字符';
+      isValid = false;
     }
 
     if (!isLogin && formData.password !== formData.confirmPassword) {
@@ -81,95 +98,51 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   };
 
   // 处理登录
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!validateForm()) return;
 
     // 显示加载动画
     setIsLoggingIn(true);
+    setErrors(prev => ({ ...prev, api: '' }));
 
-    // 模拟网络请求延迟
-    setTimeout(() => {
-      // 生成随机userId (U + 9位数字)
-      const userId = 'U' + Math.random().toString().slice(2, 11);
-      // 模拟登录成功（实际应该调用后端API）
-      const token = Math.random().toString(36).substring(2);
-      const userData = {
-        userId: userId,
+    try {
+      const success = await login({
         username: formData.username,
-        token: token,
-        email: formData.email || undefined,
-        nickname: formData.username,
-        onlineStatus: 'online' as const,
-        accountStatus: 'active' as const,
-        systemRole: 'super_admin' as const,
-        signature: '这个人很懒，什么都没有留下~',
-        loginTime: new Date().toISOString()
-      };
+        password: formData.password,
+      });
 
-      // 保存到本地存储
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // 更新 AuthContext
-      login(userData);
-      
-      // 调用父组件的登录回调（如果存在）
-      if (onLogin) {
-        onLogin({ userId, username: formData.username, token, email: formData.email });
-      }
-      
-      // 模拟页面资源加载
-      setTimeout(() => {
-        setIsLoggingIn(false);
-        // 跳转到主页
+      if (success) {
+        // 登录成功，跳转到主页
         navigate('/');
-      }, 1500);
-    }, 800);
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   // 处理注册
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (!validateForm()) return;
 
     // 显示加载动画
     setIsLoggingIn(true);
+    setErrors(prev => ({ ...prev, api: '' }));
 
-    // 模拟网络请求延迟
-    setTimeout(() => {
-      // 生成随机userId (U + 9位数字)
-      const userId = 'U' + Math.random().toString().slice(2, 11);
-      // 模拟注册成功（实际应该调用后端API）
-      const token = Math.random().toString(36).substring(2);
-      const userData = {
-        userId: userId,
+    try {
+      const success = await register({
         username: formData.username,
         email: formData.email,
-        token: token,
-        nickname: formData.username,
-        onlineStatus: 'online' as const,
-        accountStatus: 'active' as const,
-        systemRole: 'user' as const,
-        signature: '这个人很懒，什么都没有留下~',
-        loginTime: new Date().toISOString()
-      };
+        password: formData.password,
+        nickname: formData.username,  // 默认昵称为用户名
+      });
 
-      // 保存到本地存储
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      // 更新 AuthContext
-      login(userData);
-      
-      // 调用父组件的登录回调（如果存在）
-      if (onLogin) {
-        onLogin({ userId, username: formData.username, token, email: formData.email });
-      }
-      
-      // 模拟页面资源加载
-      setTimeout(() => {
-        setIsLoggingIn(false);
-        // 跳转到主页
+      if (success) {
+        // 注册成功，跳转到主页
         navigate('/');
-      }, 1500);
-    }, 800);
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
   };
 
   // 处理输入变化
@@ -202,7 +175,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         username: '',
         email: '',
         password: '',
-        confirmPassword: ''
+        confirmPassword: '',
+        api: ''
       });
       
       // 切换完成后淡入
@@ -212,10 +186,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     }, 200);
   };
 
+  // 检查是否正在加载中
+  const isSubmitting = isLoggingIn || loading;
+
   return (
     <>
       {/* 加载屏幕 */}
-      {isLoggingIn && (
+      {isSubmitting && (
         <LoadingScreen message={isLogin ? '正在登录...' : '正在注册...'} />
       )}
       
@@ -256,6 +233,13 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               {isLogin ? '登录到您的聊天室账户' : '注册一个新的聊天室账户'}
             </p>
           </div>
+
+          {/* API 错误提示 */}
+          {errors.api && (
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm animate-fade-in">
+              {errors.api}
+            </div>
+          )}
 
           {/* 表单 - 添加过渡动画 */}
           <div className={`space-y-4 transition-all duration-300 ${
@@ -364,12 +348,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             {/* 登录/注册按钮 */}
             <button
               onClick={isLogin ? handleLogin : handleRegister}
-              disabled={isLoggingIn}
+              disabled={isSubmitting}
               className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/50 active:scale-95 ${
-                isLoggingIn ? 'opacity-50 cursor-not-allowed' : ''
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              {isLoggingIn ? (
+              {isSubmitting ? (
                 <span className="flex items-center justify-center">
                   <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -386,9 +370,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <div className="text-center pt-4">
               <button
                 onClick={toggleMode}
-                disabled={isLoggingIn}
+                disabled={isSubmitting}
                 className={`text-blue-400 hover:text-blue-300 text-sm focus:outline-none transition-all duration-200 hover:underline transform hover:scale-105 ${
-                  isLoggingIn ? 'opacity-50 cursor-not-allowed' : ''
+                  isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
                 {isLogin ? '还没有账户？立即注册' : '已有账户？立即登录'}

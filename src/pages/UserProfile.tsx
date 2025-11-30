@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { notification, Spin } from 'antd';
 import { useAuth } from '../context/AuthContext';
+import { userService } from '../services/user';
 import {
   ArrowLeftOutlined,
   EditOutlined,
   SaveOutlined,
   CloseOutlined,
   UserOutlined,
-  PhoneOutlined,
-  MailOutlined,
   LockOutlined,
   IdcardOutlined,
   SmileOutlined,
@@ -17,11 +17,8 @@ import {
 
 interface UserProfile {
   userId: string;
-  username: string;
   password: string;
   nickname: string;
-  phone: string;
-  email: string;
   avatar: string;
   signature: string;
   onlineStatus: 'online' | 'away' | 'busy' | 'offline';
@@ -37,18 +34,21 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
   const navigate = useNavigate();
   const { userId: urlUserId } = useParams<{ userId: string }>();
   const { user } = useAuth();
+  const [api, contextHolder] = notification.useNotification({
+    placement: 'topRight',
+    top: 24,
+    duration: 3,
+  });
   
   // 判断是查看自己还是他人
   const isSelf = viewMode === 'self' || !urlUserId;
+  const [loading, setLoading] = useState(!isSelf); // 查看他人时需要加载数据
   
   // 模拟用户数据（实际应该从后端获取）
   const [profile, setProfile] = useState<UserProfile>({
     userId: urlUserId || 'U' + Math.random().toString().slice(2, 11),
-    username: isSelf ? (user?.username || '张伟') : '李娜',
     password: '******',
     nickname: isSelf ? (user?.username || '张伟') : '李娜',
-    phone: isSelf ? '138****8888' : '139****6666',
-    email: isSelf ? (user?.email || 'zhangwei@example.com') : 'lina@example.com',
     avatar: isSelf 
       ? 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg'
       : 'https://ai-public.mastergo.com/ai/img_res/945a373ac8cba538922e3056a3952a11.jpg',
@@ -64,44 +64,47 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
 
   // 根据 URL 参数加载用户数据
   useEffect(() => {
-    if (urlUserId && !isSelf) {
-      // TODO: 从后端获取指定用户的资料
-      console.log('加载用户资料:', urlUserId);
-      // 模拟不同用户的数据
-      const mockUserData: Record<string, UserProfile> = {
-        '2': {
-          userId: '2',
-          username: '李娜',
-          password: '******',
-          nickname: '李娜',
-          phone: '139****6666',
-          email: 'lina@example.com',
-          avatar: 'https://ai-public.mastergo.com/ai/img_res/945a373ac8cba538922e3056a3952a11.jpg',
-          signature: '热爱生活，享受每一天！',
-          onlineStatus: 'online',
-          accountStatus: 'active',
-          role: 'user'
-        },
-        '3': {
-          userId: '3',
-          username: '王强',
-          password: '******',
-          nickname: '王强',
-          phone: '137****7777',
-          email: 'wangqiang@example.com',
-          avatar: 'https://ai-public.mastergo.com/ai/img_res/7adaab35c68fc4617a58a8f92fab236e.jpg',
-          signature: '工作使我快乐',
-          onlineStatus: 'away',
-          accountStatus: 'active',
-          role: 'moderator'
-        },
-      };
-      
-      if (mockUserData[urlUserId]) {
-        setProfile(mockUserData[urlUserId]);
+    const fetchUserProfile = async () => {
+      if (urlUserId && !isSelf) {
+        setLoading(true);
+        try {
+          const response = await userService.getUserById(urlUserId);
+          if (response.code === 200 && response.data) {
+            const userData = response.data;
+            // 将API返回的User数据转换为UserProfile格式
+            setProfile({
+              userId: userData.userId,
+              password: '******', // 不显示密码
+              nickname: userData.nickname || userData.name,
+              avatar: userData.avatar,
+              signature: userData.signature || '这个人很懒，什么都没有留下~',
+              onlineStatus: userData.onlineStatus || (userData.status as 'online' | 'away' | 'busy' | 'offline') || 'offline',
+              accountStatus: userData.accountStatus || 'active',
+              role: userData.systemRole === 'super_admin' ? 'admin' : 'user',
+            });
+          } else {
+            api.error({
+              message: '获取用户信息失败',
+              description: response.message || '无法加载用户资料',
+            });
+            // 加载失败后返回上一页
+            setTimeout(() => navigate(-1), 1500);
+          }
+        } catch (err) {
+          console.error('获取用户资料失败:', err);
+          api.error({
+            message: '加载失败',
+            description: '网络错误，请稍后重试',
+          });
+          setTimeout(() => navigate(-1), 1500);
+        } finally {
+          setLoading(false);
+        }
       }
-    }
-  }, [urlUserId, isSelf]);
+    };
+    
+    fetchUserProfile();
+  }, [urlUserId, isSelf, navigate, api]);
 
   // 状态选项
   const onlineStatusOptions = [
@@ -161,6 +164,13 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
 
   return (
     <div className="min-h-screen w-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
+      {contextHolder}
+      {loading ? (
+        <div className="flex items-center justify-center h-screen">
+          <Spin size="large" tip="加载用户资料中..." />
+        </div>
+      ) : (
+      <>
       {/* 顶部导航栏 */}
       <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -242,7 +252,6 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
               {/* 用户名和昵称 */}
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold mb-2">{profile.nickname}</h2>
-                <p className="text-gray-400">@{profile.username}</p>
                 <p className="text-sm text-gray-500 mt-1">ID: {profile.userId}</p>
               </div>
 
@@ -298,26 +307,6 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
                   </div>
                 </div>
 
-                {/* 用户名 */}
-                <div className="grid grid-cols-3 gap-4 items-center">
-                  <label className="text-gray-400 flex items-center">
-                    <UserOutlined className="mr-2" />
-                    用户名
-                  </label>
-                  <div className="col-span-2">
-                    <input
-                      type="text"
-                      value={isEditing ? editedProfile.username : profile.username}
-                      onChange={(e) => handleInputChange('username', e.target.value)}
-                      disabled={!isEditing || !isSelf}
-                      className={`w-full rounded-lg py-3 px-4 focus:outline-none ${
-                        isEditing && isSelf
-                          ? 'bg-gray-700 text-white focus:ring-2 focus:ring-blue-500' 
-                          : 'bg-gray-900 text-gray-400 cursor-not-allowed'
-                      }`}
-                    />
-                  </div>
-                </div>
 
                 {/* 昵称 */}
                 <div className="grid grid-cols-3 gap-4 items-center">
@@ -376,47 +365,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
                   </div>
                 )}
 
-                {/* 手机号 */}
-                <div className="grid grid-cols-3 gap-4 items-center">
-                  <label className="text-gray-400 flex items-center">
-                    <PhoneOutlined className="mr-2" />
-                    手机号
-                  </label>
-                  <div className="col-span-2">
-                    <input
-                      type="text"
-                      value={isEditing ? editedProfile.phone : profile.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      disabled={!isEditing || !isSelf}
-                      className={`w-full rounded-lg py-3 px-4 focus:outline-none ${
-                        isEditing && isSelf
-                          ? 'bg-gray-700 text-white focus:ring-2 focus:ring-blue-500' 
-                          : 'bg-gray-900 text-gray-400 cursor-not-allowed'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                {/* 电子邮箱 */}
-                <div className="grid grid-cols-3 gap-4 items-center">
-                  <label className="text-gray-400 flex items-center">
-                    <MailOutlined className="mr-2" />
-                    电子邮箱
-                  </label>
-                  <div className="col-span-2">
-                    <input
-                      type="email"
-                      value={isEditing ? editedProfile.email : profile.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      disabled={!isEditing || !isSelf}
-                      className={`w-full rounded-lg py-3 px-4 focus:outline-none ${
-                        isEditing && isSelf
-                          ? 'bg-gray-700 text-white focus:ring-2 focus:ring-blue-500' 
-                          : 'bg-gray-900 text-gray-400 cursor-not-allowed'
-                      }`}
-                    />
-                  </div>
-                </div>
+               
 
                 {/* 在线状态 */}
                 <div className="grid grid-cols-3 gap-4 items-center">
@@ -477,6 +426,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
           </div>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };
