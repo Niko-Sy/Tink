@@ -19,12 +19,17 @@ export interface WSMessage {
 
 // 客户端发送的消息类型
 export interface WSSendMessage extends WSMessage {
-  type: 'message' | 'ping';
+  type: 'message' | 'ping' | 'room' | 'user_status' | 'typing';
+  action?: 'send' | 'read' | 'join' | 'leave' | 'update';
   data?: {
     roomId?: string;
     text?: string;
     messageType?: 'text' | 'image' | 'file';
-    replyTo?: string;
+    quotedMessageId?: string;  // 引用消息ID（回复功能）
+    mediaUrl?: string;  // 媒体文件URL
+    messageId?: string;  // 消息ID（已读功能）
+    typing?: boolean;
+    status?: 'online' | 'away' | 'busy' | 'offline';
   };
 }
 
@@ -33,25 +38,35 @@ export type WSMessageType =
   | 'message'      // 新消息/消息编辑/消息删除
   | 'user_status'  // 用户上下线
   | 'room_member'  // 成员变动
+  | 'room'         // 房间操作响应
+  | 'typing'       // 正在输入
   | 'mute'         // 禁言通知
   | 'pong'         // 心跳响应
   | 'error';       // 错误消息
 
-// 新消息通知
+// 新消息通知（根据 API 文档）
 export interface WSNewMessage {
   type: 'message';
+  action: 'new' | 'deleted' | 'edited';  // 根据文档定义，action 在顶层
   data: {
-    action: 'new' | 'edit' | 'delete';
     messageId: string;
     roomId: string;
     userId: string;
-    nickname: string;
-    avatar: string;
-    messageType?: 'text' | 'image' | 'file' | 'system';
+    userName?: string;  // 用户名
+    nickname?: string;  // 昵称（备用）
+    avatarUrl?: string;  // 头像URL
+    avatar?: string;  // 头像（备用字段）
+    type?: 'text' | 'image' | 'file' | 'system_notification';  // 消息类型字段名
+    messageType?: 'text' | 'image' | 'file' | 'system_notification';  // 备用字段名
     text?: string;
-    createdTime?: string;
-    editedTime?: string;
+    mediaUrl?: string;  // 媒体文件URL
+    quotedMessageId?: string;  // 引用的消息ID
+    time?: string;  // 时间字段
+    createdTime?: string;  // 创建时间（备用）
+    editedTime?: string;  // 编辑时间
+    timestamp?: string;  // 时间戳（备用）
     isEdited?: boolean;
+    reason?: string;  // 删除/编辑原因
   };
 }
 
@@ -189,6 +204,7 @@ export class WebSocketClient {
     };
     
     this.ws.onmessage = (event) => {
+      console.log('[WebSocket] onmessage 收到原始数据:', event.data);
       this.handleMessage(event.data);
     };
   }
@@ -200,12 +216,12 @@ export class WebSocketClient {
     try {
       const message = JSON.parse(data) as WSMessage;
       
-      // 心跳响应
+      // 心跳响应，静默处理
       if (message.type === 'pong') {
         return;
       }
       
-      console.log('[WebSocket] 收到消息:', message.type);
+      console.log('[WebSocket] 收到消息类型:', message.type, '数据:', message);
       
       // 触发对应类型的事件
       this.emit(message.type, message);
@@ -214,7 +230,7 @@ export class WebSocketClient {
       this.emit('message', message);
       
     } catch (error) {
-      console.error('[WebSocket] 消息解析失败:', error);
+      console.error('[WebSocket] 消息解析失败:', error, '原始数据:', data);
     }
   }
   
@@ -239,21 +255,27 @@ export class WebSocketClient {
   /**
    * 发送聊天消息
    */
-  sendChatMessage(
+  public sendChatMessage(
     roomId: string,
     text: string,
     messageType: 'text' | 'image' | 'file' = 'text',
     replyTo?: string
   ): boolean {
-    return this.send({
+    console.log('[WebSocketClient] 发送聊天消息:', { roomId, text, messageType, replyTo });
+    const message: WSSendMessage = {
       type: 'message',
+      action: 'send',  // 根据文档，必须包含 action 字段
       data: {
         roomId,
-        text,
         messageType,
-        replyTo,
+        text,
+        ...(replyTo && { quotedMessageId: replyTo }),  // 使用 quotedMessageId 而不是 replyTo
       },
-    });
+    };
+    console.log('[WebSocketClient] 发送消息结构:', message);
+    const result = this.send(message);
+    console.log('[WebSocketClient] 消息发送结果:', result);
+    return result;
   }
   
   /**
@@ -331,6 +353,10 @@ export class WebSocketClient {
       this.eventHandlers.set(event, new Set());
     }
     this.eventHandlers.get(event)!.add(handler as WSEventHandler);
+    // 只在首次注册时打印日志
+    if (this.eventHandlers.get(event)!.size === 1) {
+      console.log('[WebSocket] 注册事件处理器:', event);
+    }
   }
   
   /**
@@ -348,12 +374,18 @@ export class WebSocketClient {
    */
   private emit(event: string, data: unknown): void {
     const handlers = this.eventHandlers.get(event);
+    if (event !== 'pong' && event !== 'ping') {
+      console.log('[WebSocket] emit 事件:', event, '处理器数量:', handlers?.size || 0);
+    }
     if (handlers) {
       handlers.forEach((handler) => {
         try {
+          if (event !== 'pong' && event !== 'ping') {
+            console.log('[WebSocket] 执行事件处理器:', event);
+          }
           handler(data);
         } catch (error) {
-          console.error(`[WebSocket] 事件处理器错误 (${event}):`, error);
+          console.error(`[WebSocket] 事件处理器错误 [${event}]:`, error);
         }
       });
     }

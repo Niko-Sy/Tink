@@ -99,6 +99,7 @@ export const permissionChecker: PermissionChecker = {
   hasPermission: (user, member, permission) => {
     // 用户未登录，没有权限
     if (!user) {
+      console.warn('[权限检查] 用户未登录，拒绝权限:', permission);
       return false;
     }
 
@@ -109,12 +110,28 @@ export const permissionChecker: PermissionChecker = {
 
     // 如果用户不是该聊天室成员，没有权限
     if (!member || !member.isActive) {
+      console.warn('[权限检查] 用户不是活跃成员，拒绝权限:', permission, {
+        hasMember: !!member,
+        isActive: member?.isActive,
+        roomRole: member?.roomRole
+      });
       return false;
     }
 
     // 检查角色权限
     const rolePermissions = RolePermissions[member.roomRole];
-    return rolePermissions.includes(permission);
+    const hasPermission = rolePermissions.includes(permission);
+    
+    if (!hasPermission) {
+      console.warn('[权限检查] 角色无权限:', {
+        userId: user.userId,
+        roomRole: member.roomRole,
+        permission,
+        rolePermissions
+      });
+    }
+    
+    return hasPermission;
   },
 
   /**

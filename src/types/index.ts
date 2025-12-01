@@ -21,6 +21,12 @@ export interface User {
   // 全局禁言状态（超级管理员设置）
   globalMuteStatus?: 'muted' | 'unmuted';
   globalMuteEndTime?: string;
+  
+  // 聊天室成员信息（当用户在聊天室列表中时）
+  roomRole?: 'owner' | 'admin' | 'member';
+  isMuted?: boolean;
+  muteUntil?: string | null;
+  memberId?: string;
 }
 
 // 消息接口
@@ -30,7 +36,7 @@ export interface Message {
   userId: string; // 改为string类型,与User的userId一致
   userName?: string; // 添加用户名字段,用于前端显示
   importmessageId: string;
-  type: 'text' | 'image' | 'file' | 'system';
+  type: 'text' | 'image' | 'file' | 'system' | 'system_notification';  // 添加 system_notification
   text: string;
   time: string;
   isOwn: boolean;

@@ -7,7 +7,6 @@ import { useEffect } from 'react';
 import type { User, Message } from '../types';
 import { 
   wsClient,
-  messageService,
   type WSNewMessage,
   type WSUserStatus,
   type WSRoomMember,
@@ -45,18 +44,20 @@ export const useWebSocketEvents = ({
 
     // 处理新消息
     const handleNewMessage = (wsMessage: WSNewMessage) => {
-      const { data } = wsMessage;
+      console.log('[useWebSocketEvents] 收到 WebSocket 消息:', wsMessage);
+      const { data, action } = wsMessage;
       
-      if (data.action === 'new') {
+      if (action === 'new') {
+        console.log('[useWebSocketEvents] 处理新消息:', data);
         const newMessage: Message = {
           messageId: data.messageId,
           roomId: data.roomId,
           userId: data.userId,
-          userName: data.nickname,
-          importmessageId: '',
-          type: data.messageType || 'text',
+          userName: data.userName || data.nickname || '未知用户',
+          importmessageId: data.quotedMessageId || '',  // 使用 quotedMessageId
+          type: data.type || data.messageType || 'text',  // 可能是 type 或 messageType
           text: data.text || '',
-          time: messageService.formatMessageTime(data.createdTime || new Date().toISOString()),
+          time: data.time || data.createdTime || new Date().toISOString(),
           isOwn: data.userId === user.userId,
         };
         addMessageToRoom(data.roomId, newMessage);
@@ -65,9 +66,11 @@ export const useWebSocketEvents = ({
         if (data.roomId !== activeChatRoom) {
           updateRoomUnread(data.roomId, 1);
         }
-      } else if (data.action === 'delete') {
+      } else if (action === 'deleted') {  // 根据文档，action 是 'deleted'
+        console.log('[useWebSocketEvents] 处理消息删除:', data);
         deleteMessage(data.roomId, data.messageId);
-      } else if (data.action === 'edit') {
+      } else if (action === 'edited') {  // 根据文档，action 是 'edited'
+        console.log('[useWebSocketEvents] 处理消息编辑:', data);
         updateMessage(data.roomId, data.messageId, data.text || '');
       }
     };
@@ -114,17 +117,6 @@ export const useWebSocketEvents = ({
       wsClient.off('user_status', handleUserStatus);
       wsClient.off('room_member', handleRoomMember);
     };
-  }, [
-    user, 
-    activeChatRoom, 
-    addMessageToRoom, 
-    updateMessage,
-    deleteMessage,
-    updateRoomUnread,
-    updateUserStatus,
-    fetchRoomMembers, 
-    removeUser,
-    removeRoom,
-    onWarning
-  ]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.userId, activeChatRoom]); // 只依赖不会频繁变化的值
 };

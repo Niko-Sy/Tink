@@ -281,6 +281,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // 设置当前聊天室成员信息（并缓存）
   const handleSetCurrentRoomMember = useCallback((member: ChatRoomMember | null) => {
+    console.log('[AuthContext] setCurrentRoomMember 被调用:', member);
     setCurrentRoomMember(member);
     if (member) {
       setRoomMembers(prevRoomMembers => {
@@ -288,6 +289,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           ...prevRoomMembers,
           [member.roomId]: member,
         };
+        console.log('[AuthContext] 更新 roomMembers 缓存:', newRoomMembers);
         localStorage.setItem('roomMembers', JSON.stringify(newRoomMembers));
         return newRoomMembers;
       });

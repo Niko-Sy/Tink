@@ -65,6 +65,11 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
     </svg>
   ),
+  Unmute: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+    </svg>
+  ),
   Kick: () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" />
@@ -150,6 +155,7 @@ export const MenuItems = {
   // 管理相关
   report: (onClick: () => void) => createMenuItem('report', '举报', 'Report', onClick, { color: 'warning' }),
   mute: (onClick: () => void, hidden?: boolean) => createMenuItem('mute', '禁言', 'Mute', onClick, { color: 'danger', hidden }),
+  unmute: (onClick: () => void, hidden?: boolean) => createMenuItem('unmute', '解除禁言', 'Unmute', onClick, { hidden }),
   kick: (onClick: () => void, hidden?: boolean) => createMenuItem('kick', '踢出聊天室', 'Kick', onClick, { color: 'danger', hidden }),
   setAdmin: (onClick: () => void, hidden?: boolean) => createMenuItem('setAdmin', '设为管理员', 'SetAdmin', onClick, { hidden }),
   removeAdmin: (onClick: () => void, hidden?: boolean) => createMenuItem('removeAdmin', '解除管理员', 'RemoveAdmin', onClick, { color: 'warning', hidden }),

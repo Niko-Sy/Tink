@@ -58,15 +58,23 @@ export const useRoomMembers = ({
         
         const memberList = rawData.members || rawData.list || [];
         
+        // 保留完整的成员信息，包括 roomRole 和 isMuted 状态
         const members: User[] = memberList.map((member: any) => ({
           userId: member.userId,
           name: member.nickname || member.name || member.username,
           status: (member.status || member.onlineStatus || 'offline') as 'online' | 'away' | 'busy' | 'offline',
           avatar: member.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
+          // 保存成员信息用于权限判断
+          ...(member.memberInfo && {
+            roomRole: member.memberInfo.roomRole,
+            isMuted: member.memberInfo.isMuted,
+            muteUntil: member.memberInfo.muteUntil,
+            memberId: member.memberInfo.memberId,
+          }),
         }));
         
         setUsers(members);
-        console.log('聊天室成员列表:', members);
+        console.log('聊天室成员列表（含权限信息）:', members);
       }
     } catch (err) {
       console.error('获取成员列表失败:', err);

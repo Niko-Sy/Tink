@@ -14,6 +14,7 @@ import { useChatRooms } from './hooks/useChatRooms';
 import { useMessages } from './hooks/useMessages';
 import { useRoomMembers } from './hooks/useRoomMembers';
 import { useWebSocketEvents } from './hooks/useWebSocketEvents';
+import { wsClient } from './services/websocket';
 
 const App: React.FC = () => {
   const { user, currentRoomMember, setCurrentRoomMember } = useAuth();
@@ -70,6 +71,7 @@ const App: React.FC = () => {
     addMessageToRoom,
     updateMessage,
     deleteMessage,
+    clearRoomCache,
   } = useMessages({
     user,
     onError: showError,
@@ -111,6 +113,8 @@ const App: React.FC = () => {
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showUserPanel, setShowUserPanel] = useState(true);
+  const [replyingToMessageId, setReplyingToMessageId] = useState<string | null>(null);
+  const [showDebugPanel, setShowDebugPanel] = useState(true);
   
   // 禁用全局右键菜单
   useEffect(() => {
@@ -123,34 +127,64 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // WebSocket 连接管理
+  useEffect(() => {
+    console.log('[App] WebSocket 连接管理 useEffect', { user: user?.userId, isConnected: wsClient.isConnected });
+    if (user && !wsClient.isConnected) {
+      console.log('[App] 用户已登录，建立 WebSocket 连接');
+      wsClient.connect();
+    }
+
+    return () => {
+      // 组件卸载时断开连接
+      if (wsClient.isConnected) {
+        console.log('[App] 组件卸载，断开 WebSocket 连接');
+        wsClient.disconnect();
+      }
+    };
+  }, [user]);
+
   // 切换聊天室时获取成员信息和消息
   useEffect(() => {
     if (activeChatRoom !== '100000001') {
+      console.log('[App] 切换到聊天室:', activeChatRoom);
       fetchRoomMembers(activeChatRoom);
       fetchCurrentMemberInfo(activeChatRoom);
-      fetchMessages(activeChatRoom);
+      // 每次切换房间时强制刷新消息历史
+      clearRoomCache(activeChatRoom);
+      fetchMessages(activeChatRoom, true);
       clearRoomUnread(activeChatRoom);
     }
-  }, [activeChatRoom, fetchRoomMembers, fetchCurrentMemberInfo, fetchMessages, clearRoomUnread]);
+  }, [activeChatRoom, fetchRoomMembers, fetchCurrentMemberInfo, fetchMessages, clearRoomUnread, clearRoomCache]);
   
   // 发送消息（添加权限检查）
   const handleSend = async () => {
-    if (inputValue.trim() === '' || !user) return;
+    console.log('[App] handleSend 被调用', { inputValue, user: user?.userId, activeChatRoom });
+    
+    if (inputValue.trim() === '' || !user) {
+      console.log('[App] 发送被阻止: 输入为空或用户未登录');
+      return;
+    }
     
     // 权限检查：是否可以发送消息
     if (!permissionChecker.canSendMessage(user, currentRoomMember)) {
       const muteReason = permissionChecker.getMuteReason(user, currentRoomMember);
+      console.log('[App] 发送被阻止: 权限检查失败', muteReason);
       showError('无法发送消息', muteReason || '你没有发送消息的权限', 3);
       return;
     }
     
     const messageText = inputValue.trim();
+    console.log('[App] 准备发送消息:', { messageText, activeChatRoom, replyingTo: replyingToMessageId });
     setInputValue('');
     setShowEmojiPanel(false);
     
     try {
-      await sendMessage(activeChatRoom, messageText);
+      await sendMessage(activeChatRoom, messageText, replyingToMessageId || undefined);
+      console.log('[App] 消息发送成功');
+      setReplyingToMessageId(null); // 发送成功后清除回复状态
     } catch (err) {
+      console.error('[App] 消息发送失败:', err);
       // 发送失败，恢复输入框内容
       setInputValue(messageText);
     }
@@ -223,6 +257,31 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen w-screen bg-ground text-white">
       {contextHolder}
+      
+      {/* 调试面板 */}
+      {showDebugPanel && (
+        <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs font-mono shadow-lg max-w-2xl">
+          <div className="flex justify-between items-center mb-2">
+            <span className="font-bold text-yellow-400">调试信息</span>
+            <button 
+              onClick={() => setShowDebugPanel(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="space-y-1 text-gray-300">
+            <div>用户ID: <span className="text-green-400">{user?.userId || '未登录'}</span></div>
+            <div>当前房间: <span className="text-blue-400">{activeChatRoom}</span></div>
+            <div>WebSocket状态: <span className={wsClient.isConnected ? 'text-green-400' : 'text-red-400'}>
+              {wsClient.isConnected ? '已连接' : '未连接'}
+            </span></div>
+            <div>消息数量: <span className="text-purple-400">{messages.length}</span></div>
+            <div>房间消息缓存: <span className="text-orange-400">{Object.keys(roomMessages).join(', ') || '无'}</span></div>
+          </div>
+        </div>
+      )}
+      
       {/* 左侧边栏 */}
       <Sidebar
         chatRooms={chatRooms}
@@ -304,8 +363,18 @@ const App: React.FC = () => {
               /* 消息记录区域 */
               <div className="flex-1 flex flex-col">
                 {/* 消息展示区 */}
-                <MessageArea messages={messages} users={users} />
-            
+                <MessageArea 
+                  messages={messages} 
+                  users={users}
+                  activeChatRoom={activeChatRoom}
+                  onDeleteMessage={deleteMessage}
+                  onUpdateMessage={updateMessage}
+                  onReplyMessage={(messageId) => {
+                    setReplyingToMessageId(messageId);
+                    // 聚焦到输入框
+                    document.querySelector<HTMLInputElement>('input[type="text"]')?.focus();
+                  }}
+                />
               {/* 输入控制区 */}
               <div className=" border-gray-800 bg-ground p-4">
                 {/* 禁言提示 */}
@@ -315,6 +384,26 @@ const App: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                     {permissionChecker.getMuteReason(user, currentRoomMember) || '你没有发送消息的权限'}
+                  </div>
+                )}
+
+                {/* 回复消息提示 */}
+                {replyingToMessageId && (
+                  <div className="mb-3 p-3 bg-gray-800 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-sm text-gray-400">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                      </svg>
+                      <span>回复: {messages.find(m => m.messageId === replyingToMessageId)?.text.slice(0, 30) || '消息'}</span>
+                    </div>
+                    <button
+                      className="text-gray-500 hover:text-gray-300 transition-colors focus:outline-none bg-transparent"
+                      onClick={() => setReplyingToMessageId(null)}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
                 )}
 

@@ -34,14 +34,18 @@ export interface MessageListItem {
   messageId: string;
   roomId: string;
   userId: string;
-  username: string;
-  nickname: string;
-  avatar: string;
-  type: 'text' | 'image' | 'file' | 'system';
+  username?: string;  // API 文档中的字段
+  nickname?: string;  // 备用字段
+  userName?: string;  // 实际后端返回的字段
+  avatar?: string;
+  type: 'text' | 'image' | 'file' | 'system' | 'system_notification';
   text: string;
-  createdTime: string;
+  createdTime?: string;  // API 文档中的字段
+  time?: string;  // 实际后端返回的字段
   updatedTime?: string;
   isEdited: boolean;
+  editedAt?: string | null;  // 实际后端返回的字段
+  isOwn?: boolean;  // 实际后端返回的字段
   replyTo?: {
     messageId: string;
     userId: string;
@@ -53,7 +57,8 @@ export interface MessageListItem {
 
 // 消息历史分页响应（支持游标分页）
 export interface MessageHistoryResponse {
-  list: MessageListItem[];
+  list?: MessageListItem[];  // 旧版本字段名
+  messages?: MessageListItem[];  // 新版本字段名（实际后端使用）
   total: number;
   page: number;
   pageSize: number;
@@ -191,12 +196,12 @@ export const toMessage = (item: MessageListItem, currentUserId: string): Message
   messageId: item.messageId,
   roomId: item.roomId,
   userId: item.userId,
-  userName: item.nickname || item.username,
+  userName: item.userName || item.nickname || item.username || '未知用户',
   importmessageId: item.replyTo?.messageId || '',
-  type: item.type,
+  type: item.type as Message['type'],
   text: item.text,
-  time: formatMessageTime(item.createdTime),
-  isOwn: item.userId === currentUserId,
+  time: item.time || item.createdTime || new Date().toISOString(),
+  isOwn: item.isOwn !== undefined ? item.isOwn : (item.userId === currentUserId),
 });
 
 /**

@@ -1,25 +1,66 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Modal, Input, notification } from 'antd';
 import type { User, Message } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { permissionChecker } from '../utils/permissions';
 import { useContextMenu } from '../hooks/useContextMenu';
+import { useMessageActions } from '../hooks/useMessageActions';
 import ContextMenu from './ContextMenu';
 import { MenuItems, createDivider } from '../utils/menuItems';
 import type { MenuItemType } from './ContextMenu';
+import { memberService } from '../services/member';
+import MuteMemberModal from './MuteMemberModal';
 
 interface MessageAreaProps {
   messages: Message[];
   users: User[];
+  activeChatRoom: string;
+  onDeleteMessage?: (roomId: string, messageId: string) => void;
+  onUpdateMessage?: (roomId: string, messageId: string, text: string) => void;
+  onReplyMessage?: (messageId: string) => void;
 }
 
-const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
+const MessageArea: React.FC<MessageAreaProps> = ({ 
+  messages, 
+  users, 
+  activeChatRoom,
+  onDeleteMessage,
+  onUpdateMessage,
+  onReplyMessage,
+}) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
   const { user, currentRoomMember } = useAuth();
   const navigate = useNavigate();
   const [visibleMessages, setVisibleMessages] = useState<Set<string>>(new Set());
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [showMuteModal, setShowMuteModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserName, setSelectedUserName] = useState('');
+  const [api, contextHolder] = notification.useNotification({
+    placement: 'topRight',
+    top: 24,
+    duration: 2,
+  });
+  
+  // 消息操作hook
+  const {
+    handleRecallMessage,
+    handleEditMessage,
+    handleCopyMessage,
+    handleReplyMessage,
+  } = useMessageActions({
+    user,
+    onSuccess: (message, description, duration) => {
+      api.success({ message, description, duration });
+    },
+    onError: (message, description, duration) => {
+      api.error({ message, description, duration });
+    },
+  });
 
   // 设置 Intersection Observer
   useEffect(() => {
@@ -91,25 +132,47 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
     // 自己的消息
     if (isOwn) {
       if (permissionChecker.canDeleteMessage(user, currentRoomMember, message)) {
-        items.push(MenuItems.recall(() => handleMenuAction('recall', messageId)));
+        items.push(MenuItems.recall(() => {
+          handleRecallMessage(activeChatRoom, messageId).then(() => {
+            onDeleteMessage?.(activeChatRoom, messageId);
+          });
+          closeContextMenu();
+        }));
       }
       if (permissionChecker.canEditMessage(user, currentRoomMember, message)) {
-        items.push(MenuItems.edit(() => handleMenuAction('edit', messageId)));
+        items.push(MenuItems.edit(() => {
+          setEditingMessageId(messageId);
+          setEditText(message.text);
+          closeContextMenu();
+        }));
       }
     } else {
       // 管理员可以编辑/删除他人消息
       if (permissionChecker.canEditMessage(user, currentRoomMember, message)) {
-        items.push(MenuItems.adminEdit(() => handleMenuAction('edit', messageId)));
+        items.push(MenuItems.adminEdit(() => {
+          setEditingMessageId(messageId);
+          setEditText(message.text);
+          closeContextMenu();
+        }));
       }
       if (permissionChecker.canDeleteMessage(user, currentRoomMember, message)) {
-        items.push(MenuItems.delete(() => handleMenuAction('delete', messageId)));
+        items.push(MenuItems.delete(() => {
+          handleRecallMessage(activeChatRoom, messageId).then(() => {
+            onDeleteMessage?.(activeChatRoom, messageId);
+          });
+          closeContextMenu();
+        }));
       }
     }
 
-    items.push(MenuItems.reply(() => handleMenuAction('reply', messageId)));
+    items.push(MenuItems.reply(() => {
+      handleReplyMessage(messageId, (id) => {
+        onReplyMessage?.(id);
+      });
+      closeContextMenu();
+    }));
     items.push(MenuItems.copy(() => {
-      navigator.clipboard.writeText(message.text);
-      console.log('已复制消息内容');
+      handleCopyMessage(message.text);
       closeContextMenu();
     }));
 
@@ -117,24 +180,76 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
   };
 
   // 生成用户头像菜单项（其他用户）
-  const generateAvatarMenuItems = (userId: string): MenuItemType[] => [
-    MenuItems.privateMessage(() => handleMenuAction('privateMessage', userId)),
-    MenuItems.mention(() => handleMenuAction('mention', userId)),
-    MenuItems.addFriend(() => handleMenuAction('addFriend', userId)),
-    MenuItems.viewProfile(() => {
-      const targetUser = users.find(u => u.userId === userId);
-      if (targetUser) {
-        console.log('查看用户信息:', targetUser);
+  const generateAvatarMenuItems = (userId: string): MenuItemType[] => {
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) return [];
+    
+    // 直接从 targetUser 中获取成员信息
+    const isAdmin = targetUser.roomRole === 'admin' || targetUser.roomRole === 'owner';
+    const isOwner = targetUser.roomRole === 'owner';
+    const isMuted = targetUser.isMuted || false;
+    const canManageAdmins = permissionChecker.canSetAdmin(user, currentRoomMember);
+    const canMute = permissionChecker.canMuteMember(user, currentRoomMember);
+    
+    const menuItems: MenuItemType[] = [
+      MenuItems.privateMessage(() => handleMenuAction('privateMessage', userId)),
+      MenuItems.mention(() => handleMenuAction('mention', userId)),
+      MenuItems.addFriend(() => handleMenuAction('addFriend', userId)),
+      MenuItems.viewProfile(() => {
+        if (targetUser) {
+          console.log('查看用户信息:', targetUser);
+        }
+        closeContextMenu();
+      }),
+      createDivider(),
+      MenuItems.report(() => handleMenuAction('report', userId)),
+    ];
+    
+    // 根据禁言状态显示禁言或解除禁言
+    if (isMuted) {
+      menuItems.push(
+        MenuItems.unmute(
+          () => handleMenuAction('unmute', userId),
+          !canMute
+        )
+      );
+    } else {
+      menuItems.push(
+        MenuItems.mute(
+          () => handleMenuAction('mute', userId),
+          !canMute
+        )
+      );
+    }
+    
+    menuItems.push(
+      MenuItems.kick(
+        () => handleMenuAction('kick', userId),
+        !permissionChecker.canRemoveMember(user, currentRoomMember)
+      )
+    );
+    
+    // 根据管理员状态显示设置或取消管理员（房主不显示）
+    if (!isOwner) {
+      if (isAdmin) {
+        menuItems.push(
+          MenuItems.removeAdmin(
+            () => handleMenuAction('removeAdmin', userId),
+            !canManageAdmins
+          )
+        );
+      } else {
+        menuItems.push(
+          MenuItems.setAdmin(
+            () => handleMenuAction('setAdmin', userId),
+            !canManageAdmins
+          )
+        );
       }
-      closeContextMenu();
-    }),
-    createDivider(),
-    MenuItems.report(() => handleMenuAction('report', userId)),
-    MenuItems.mute(
-      () => handleMenuAction('mute', userId),
-      !permissionChecker.canMuteMember(user, currentRoomMember)
-    ),
-  ];
+    }
+    
+    return menuItems;
+  };
 
   // 生成自己头像菜单项
   const generateOwnAvatarMenuItems = (): MenuItemType[] => [
@@ -176,60 +291,319 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
       userId
     });
   };
-  // 处理菜单操作
-  const handleMenuAction = (action: string, data?: any) => {
+  // 处理菜单操作（保留未实现的功能）
+  const handleMenuAction = async (action: string, data?: any) => {
     console.log(`执行操作: ${action}`, data);
-    closeContextMenu();
-    // TODO: 实现具体的功能
+    
     switch(action) {
-      case 'recall':
-        console.log('撤回消息:', data);
-        break;
-      case 'edit':
-        console.log('编辑消息:', data);
-        break;
-      case 'reply':
-        console.log('回复消息:', data);
-        break;
-      case 'privateMessage':
-        console.log('私信用户:', data);
-        break;
-      case 'mention':
-        console.log('艾特用户:', data);
-        break;
-      case 'addFriend':
-        console.log('添加好友:', data);
-        break;
       case 'profilePage':
-        console.log('打开个人主页:', data);
+        closeContextMenu();
         navigate('/profile');
         break;
-      case 'accountSettings':
-        console.log('打开账号设置:', data);
-        break;
-      case 'privacy':
-        console.log('打开隐私设置:', data);
-        break;
-      case 'notifications':
-        console.log('打开通知设置:', data);
-        break;
-      case 'help':
-        console.log('打开帮助中心:', data);
-        break;
-      case 'feedback':
-        console.log('打开反馈建议:', data);
-        break;
-      case 'report':
-        console.log('举报用户:', data);
-        break;
       case 'mute':
-        console.log('禁言用户:', data);
+        // 打开禁言弹窗
+        const targetUser = users.find(u => u.userId === data);
+        setSelectedUserId(data);
+        setSelectedUserName(targetUser?.name || '未知用户');
+        setShowMuteModal(true);
+        closeContextMenu();
         break;
+      case 'unmute':
+        closeContextMenu();
+        await handleUnmuteMember(data);
+        break;
+      case 'setAdmin':
+        closeContextMenu();
+        await handleSetAdmin(data);
+        break;
+      case 'removeAdmin':
+        closeContextMenu();
+        await handleRemoveAdmin(data);
+        break;
+      case 'privateMessage':
+      case 'mention':
+      case 'addFriend':
+      case 'accountSettings':
+      case 'privacy':
+      case 'notifications':
+      case 'help':
+      case 'feedback':
+      case 'report':
+      case 'kick':
+        closeContextMenu();
+        api.info({ 
+          message: '功能开发中', 
+          description: '此功能正在开发中，敬请期待！', 
+          duration: 2 
+        });
+        break;
+      default:
+        closeContextMenu();
+    }
+  };
+  
+  // 确认编辑消息
+  const handleConfirmEdit = async () => {
+    if (!editingMessageId || !editText.trim()) return;
+    
+    await handleEditMessage(activeChatRoom, editingMessageId, editText);
+    onUpdateMessage?.(activeChatRoom, editingMessageId, editText);
+    setEditingMessageId(null);
+    setEditText('');
+  };
+
+  // 禁言用户（从弹窗确认）
+  const handleMuteConfirm = async (duration: number, reason?: string) => {
+    if (!currentRoomMember?.roomId || !selectedUserId) return;
+    
+    const targetUser = users.find(u => u.userId === selectedUserId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        selectedUserId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      const response = await memberService.muteMember(
+        currentRoomMember.roomId,
+        {
+          memberid: memberInfoResponse.data.memberId,
+          duration,
+          reason,
+        }
+      );
+      
+      if (response.code === 200) {
+        const durationText = duration === 0 ? '永久' : 
+          duration < 60 ? `${duration}分钟` :
+          duration < 1440 ? `${Math.floor(duration / 60)}小时` :
+          `${Math.floor(duration / 1440)}天`;
+        
+        api.success({
+          message: '禁言成功',
+          description: `已禁言 ${targetUser.name} ${durationText}`,
+        });
+      } else {
+        api.error({
+          message: '禁言失败',
+          description: response.message || '禁言操作失败',
+        });
+      }
+    } catch (err) {
+      console.error('禁言用户失败:', err);
+      api.error({
+        message: '禁言失败',
+        description: '网络错误，请稍后重试',
+      });
+    }
+  };
+
+  // 解除禁言
+  const handleUnmuteMember = async (userId: string) => {
+    if (!currentRoomMember?.roomId) return;
+    
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        userId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      const response = await memberService.unmuteMember(
+        currentRoomMember.roomId,
+        { memberid: memberInfoResponse.data.memberId }
+      );
+      
+      if (response.code === 200) {
+        api.success({
+          message: '解除禁言成功',
+          description: `已解除 ${targetUser.name} 的禁言`,
+        });
+      } else {
+        api.error({
+          message: '解除禁言失败',
+          description: response.message || '解除禁言操作失败',
+        });
+      }
+    } catch (err) {
+      console.error('解除禁言失败:', err);
+      api.error({
+        message: '解除禁言失败',
+        description: '网络错误，请稍后重试',
+      });
+    }
+  };
+
+  // 设置为管理员
+  const handleSetAdmin = async (userId: string) => {
+    if (!currentRoomMember?.roomId) return;
+    
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        userId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      const response = await memberService.setAdmin(
+        currentRoomMember.roomId,
+        { memberid: memberInfoResponse.data.memberId }
+      );
+      
+      if (response.code === 200) {
+        api.success({
+          message: '设置成功',
+          description: '已将该用户设置为管理员',
+        });
+      } else {
+        api.error({
+          message: '设置失败',
+          description: response.message || '设置管理员失败',
+        });
+      }
+    } catch (err) {
+      console.error('设置管理员失败:', err);
+      api.error({
+        message: '设置失败',
+        description: '网络错误，请稍后重试',
+      });
+    }
+  };
+
+  // 解除管理员
+  const handleRemoveAdmin = async (userId: string) => {
+    if (!currentRoomMember?.roomId) return;
+    
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        userId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      const response = await memberService.removeAdmin(
+        currentRoomMember.roomId,
+        { memberid: memberInfoResponse.data.memberId }
+      );
+      
+      if (response.code === 200) {
+        api.success({
+          message: '解除成功',
+          description: '已将该用户解除管理员身份',
+        });
+      } else {
+        api.error({
+          message: '解除失败',
+          description: response.message || '解除管理员失败',
+        });
+      }
+    } catch (err) {
+      console.error('解除管理员失败:', err);
+      api.error({
+        message: '解除失败',
+        description: '网络错误，请稍后重试',
+      });
+    }
+  };
+
+  // 格式化消息时间为 HH:MM
+  const formatMessageTime = (isoTime: string): string => {
+    if (!isoTime) return '';
+    
+    try {
+      const date = new Date(isoTime);
+      // 检查日期是否有效
+      if (isNaN(date.getTime())) {
+        return isoTime;
+      }
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    } catch (error) {
+      return isoTime;
     }
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 bg-ground relative">
+    <>
+      {contextHolder}
+      
+      {/* 禁言弹窗 */}
+      <MuteMemberModal
+        isOpen={showMuteModal}
+        userName={selectedUserName}
+        onClose={() => {
+          setShowMuteModal(false);
+          setSelectedUserId(null);
+          setSelectedUserName('');
+        }}
+        onConfirm={handleMuteConfirm}
+      />
+      
+      <div className="flex-1 overflow-y-auto p-6 bg-ground relative">
       <div className="space-y-4">
         {messages.map((message) => {
           const isVisible = visibleMessages.has(message.messageId);
@@ -266,7 +640,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
             <div className="max-w-xs md:max-w-md">
               {!message.isOwn && (
                 <div className="text-xs text-gray-500 mb-1">
-                  {message.userName || '匿名用户'} {message.time}
+                  {message.userName || '匿名用户'} {formatMessageTime(message.time)}
                 </div>
               )}
               <div
@@ -281,7 +655,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
               </div>
               {message.isOwn && (
                 <div className="text-xs text-gray-500 mt-1 text-right">
-                  {message.time}
+                  {formatMessageTime(message.time)}
                 </div>
               )}
             </div>
@@ -322,6 +696,30 @@ const MessageArea: React.FC<MessageAreaProps> = ({ messages, users }) => {
         />
       )}
     </div>
+    
+    {/* 编辑消息对话框 */}
+    <Modal
+      title="编辑消息"
+      open={editingMessageId !== null}
+      onOk={handleConfirmEdit}
+      onCancel={() => {
+        setEditingMessageId(null);
+        setEditText('');
+      }}
+      okText="确定"
+      cancelText="取消"
+      maskClosable={false}
+    >
+      <Input.TextArea
+        value={editText}
+        onChange={(e) => setEditText(e.target.value)}
+        placeholder="请输入消息内容"
+        autoSize={{ minRows: 3, maxRows: 8 }}
+        maxLength={500}
+        showCount
+      />
+    </Modal>
+    </>
   );
 };
 

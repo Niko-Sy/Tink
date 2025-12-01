@@ -10,6 +10,7 @@ import { useContextMenu } from '../hooks/useContextMenu';
 import { MenuItems, createDivider } from '../utils/menuItems';
 import type { MenuItemType } from './ContextMenu';
 import { memberService } from '../services/member';
+import MuteMemberModal from './MuteMemberModal';
 
 interface UserListPanelProps {
   users: User[];
@@ -18,6 +19,9 @@ interface UserListPanelProps {
 const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showMuteModal, setShowMuteModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserName, setSelectedUserName] = useState('');
   const { contextMenu, handleContextMenu, closeContextMenu } = useContextMenu();
   const { user, currentRoomMember } = useAuth();
   const [api, contextHolder] = notification.useNotification({
@@ -120,11 +124,13 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
         });
         break;
       case 'mute':
-        console.log('禁言用户:', targetUser);
-        api.info({
-          message: '禁言功能',
-          description: '禁言功能开发中，敬请期待！',
-        });
+        // 打开禁言弹窗
+        setSelectedUserId(userId);
+        setSelectedUserName(targetUser?.name || '未知用户');
+        setShowMuteModal(true);
+        break;
+      case 'unmute':
+        await handleUnmuteMember(userId);
         break;
       case 'kick':
         console.log('踢出用户:', targetUser);
@@ -139,6 +145,125 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
       case 'removeAdmin':
         await handleRemoveAdmin(userId);
         break;
+    }
+  };
+
+  // 禁言用户（从弹窗确认）
+  const handleMuteConfirm = async (duration: number, reason?: string) => {
+    if (!currentRoomMember?.roomId || !selectedUserId) return;
+    
+    const targetUser = users.find(u => u.userId === selectedUserId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      // 获取目标用户的成员信息
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        selectedUserId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      // 执行禁言
+      const response = await memberService.muteMember(
+        currentRoomMember.roomId,
+        {
+          memberid: memberInfoResponse.data.memberId,
+          duration,
+          reason,
+        }
+      );
+      
+      if (response.code === 200) {
+        const durationText = duration === 0 ? '永久' : 
+          duration < 60 ? `${duration}分钟` :
+          duration < 1440 ? `${Math.floor(duration / 60)}小时` :
+          `${Math.floor(duration / 1440)}天`;
+        
+        api.success({
+          message: '禁言成功',
+          description: `已禁言 ${targetUser.name} ${durationText}`,
+        });
+        // TODO: 刷新成员列表或更新本地状态
+      } else {
+        api.error({
+          message: '禁言失败',
+          description: response.message || '禁言操作失败',
+        });
+      }
+    } catch (err) {
+      console.error('禁言用户失败:', err);
+      api.error({
+        message: '禁言失败',
+        description: '网络错误，请稍后重试',
+      });
+    }
+  };
+
+  // 解除禁言
+  const handleUnmuteMember = async (userId: string) => {
+    if (!currentRoomMember?.roomId) return;
+    
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      // 获取目标用户的成员信息
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        userId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      // 执行解除禁言
+      const response = await memberService.unmuteMember(
+        currentRoomMember.roomId,
+        { memberid: memberInfoResponse.data.memberId }
+      );
+      
+      if (response.code === 200) {
+        api.success({
+          message: '解除禁言成功',
+          description: `已解除 ${targetUser.name} 的禁言`,
+        });
+        // TODO: 刷新成员列表或更新本地状态
+      } else {
+        api.error({
+          message: '解除禁言失败',
+          description: response.message || '解除禁言操作失败',
+        });
+      }
+    } catch (err) {
+      console.error('解除禁言失败:', err);
+      api.error({
+        message: '解除禁言失败',
+        description: '网络错误，请稍后重试',
+      });
     }
   };
 
@@ -274,33 +399,67 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
     
     // 如果点击的是他人，显示用户操作菜单
     const targetUser = users.find(u => u.userId === userId);
-    const targetMember = targetUser as unknown as { roomRole?: string };
-    const isAdmin = targetMember?.roomRole === 'admin';
-    const canManageAdmins = permissionChecker.canSetAdmin(user, currentRoomMember);
+    if (!targetUser) return [];
     
-    return [
+    // 直接从 targetUser 中获取成员信息
+    const isAdmin = targetUser.roomRole === 'admin' || targetUser.roomRole === 'owner';
+    const isOwner = targetUser.roomRole === 'owner';
+    const isMuted = targetUser.isMuted || false;
+    const canManageAdmins = permissionChecker.canSetAdmin(user, currentRoomMember);
+    const canMute = permissionChecker.canMuteMember(user, currentRoomMember);
+    
+    const menuItems: MenuItemType[] = [
       MenuItems.privateMessage(() => handleMenuAction('privateMessage', userId)),
       MenuItems.addFriend(() => handleMenuAction('addFriend', userId)),
       MenuItems.viewProfile(() => handleMenuAction('viewProfile', userId)),
       createDivider(),
       MenuItems.report(() => handleMenuAction('report', userId)),
-      MenuItems.mute(
-        () => handleMenuAction('mute', userId),
-        !permissionChecker.canMuteMember(user, currentRoomMember)
-      ),
+    ];
+    
+    // 根据禁言状态显示禁言或解除禁言
+    if (isMuted) {
+      menuItems.push(
+        MenuItems.unmute(
+          () => handleMenuAction('unmute', userId),
+          !canMute
+        )
+      );
+    } else {
+      menuItems.push(
+        MenuItems.mute(
+          () => handleMenuAction('mute', userId),
+          !canMute
+        )
+      );
+    }
+    
+    menuItems.push(
       MenuItems.kick(
         () => handleMenuAction('kick', userId),
         !permissionChecker.canRemoveMember(user, currentRoomMember)
-      ),
-      MenuItems.setAdmin(
-        () => handleMenuAction('setAdmin', userId),
-        !canManageAdmins || isAdmin
-      ),
-      MenuItems.removeAdmin(
-        () => handleMenuAction('removeAdmin', userId),
-        !canManageAdmins || !isAdmin
-      ),
-    ];
+      )
+    );
+    
+    // 根据管理员状态显示设置或取消管理员（房主不显示）
+    if (!isOwner) {
+      if (isAdmin) {
+        menuItems.push(
+          MenuItems.removeAdmin(
+            () => handleMenuAction('removeAdmin', userId),
+            !canManageAdmins
+          )
+        );
+      } else {
+        menuItems.push(
+          MenuItems.setAdmin(
+            () => handleMenuAction('setAdmin', userId),
+            !canManageAdmins
+          )
+        );
+      }
+    }
+    
+    return menuItems;
   };
 
   // 过滤用户
@@ -321,6 +480,19 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
   return (
     <>
       {contextHolder}
+      
+      {/* 禁言弹窗 */}
+      <MuteMemberModal
+        isOpen={showMuteModal}
+        userName={selectedUserName}
+        onClose={() => {
+          setShowMuteModal(false);
+          setSelectedUserId(null);
+          setSelectedUserName('');
+        }}
+        onConfirm={handleMuteConfirm}
+      />
+      
       <div className="h-full w-60 bg-ground flex flex-col border-l border-grayborder">
       {/* 在线用户头像区 */}
       <div className="px-6 pt-5 border-grayborder">
