@@ -13,8 +13,8 @@ import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axio
 const API_CONFIG = {
   // 开发环境
   development: {
-    baseURL: 'http://localhost:8080/api/v1',
-    wsURL: 'ws://localhost:8080/ws',
+    baseURL: 'http://10.84.250.156:8080/api/v1',
+    wsURL: 'ws://10.84.250.156:8080/ws',
   },
   // 生产环境
   production: {

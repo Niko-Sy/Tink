@@ -12,6 +12,7 @@ export interface UseRoomMembersReturn {
   fetchRoomMembers: (roomId: string) => Promise<void>;
   fetchCurrentMemberInfo: (roomId: string) => Promise<void>;
   updateUserStatus: (userId: string, status: 'online' | 'away' | 'busy' | 'offline') => void;
+  updateUserMuteStatus: (userId: string, isMuted: boolean, muteUntil?: string | null) => void;
   removeUser: (userId: string) => void;
 }
 
@@ -129,6 +130,32 @@ export const useRoomMembers = ({
     ));
   }, []);
 
+  // 更新用户禁言状态
+  const updateUserMuteStatus = useCallback((userId: string, isMuted: boolean, muteUntil?: string | null) => {
+    console.log(`[useRoomMembers] ✅ updateUserMuteStatus 被调用:`, { userId, isMuted, muteUntil });
+    
+    setUsers(prev => {
+      console.log(`[useRoomMembers] 更新前用户列表:`, prev.map(u => ({ userId: u.userId, name: u.name, isMuted: u.isMuted })));
+      
+      const targetUser = prev.find(u => u.userId === userId);
+      if (!targetUser) {
+        console.warn(`[useRoomMembers] ⚠️ 未找到用户 ${userId}`);
+        return prev;
+      }
+      
+      const updated = prev.map(u => 
+        u.userId === userId 
+          ? { ...u, isMuted, muteUntil }
+          : u
+      );
+      
+      console.log(`[useRoomMembers] ✅ 用户列表已更新:`, updated.map(u => ({ userId: u.userId, name: u.name, isMuted: u.isMuted })));
+      console.log(`[useRoomMembers] ✅ 目标用户更新: ${targetUser.name} - isMuted: ${targetUser.isMuted} → ${isMuted}`);
+      
+      return updated;
+    });
+  }, []); // 移除users依赖，避免闭包陷阱
+
   // 移除用户
   const removeUser = useCallback((userId: string) => {
     setUsers(prev => prev.filter(u => u.userId !== userId));
@@ -139,6 +166,7 @@ export const useRoomMembers = ({
     fetchRoomMembers,
     fetchCurrentMemberInfo,
     updateUserStatus,
+    updateUserMuteStatus,
     removeUser,
   };
 };

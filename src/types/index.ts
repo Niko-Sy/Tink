@@ -35,7 +35,7 @@ export interface Message {
   roomId: string;
   userId: string; // 改为string类型,与User的userId一致
   userName?: string; // 添加用户名字段,用于前端显示
-  importmessageId: string;
+  quotedMessageId?: string; // 引用的消息ID（用于回复功能）
   type: 'text' | 'image' | 'file' | 'system' | 'system_notification';  // 添加 system_notification
   text: string;
   time: string;

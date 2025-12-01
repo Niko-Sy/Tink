@@ -83,6 +83,7 @@ const App: React.FC = () => {
     fetchRoomMembers,
     fetchCurrentMemberInfo,
     updateUserStatus,
+    updateUserMuteStatus,
     removeUser,
   } = useRoomMembers({
     user,
@@ -98,10 +99,31 @@ const App: React.FC = () => {
     deleteMessage,
     updateRoomUnread,
     updateUserStatus,
+    updateUserMuteStatus,
+    updateCurrentMemberMuteStatus: (roomId: string, isMuted: boolean, muteUntil?: string | null) => {
+      // 更新当前房间成员的禁言状态
+      if (currentRoomMember) {
+        if (currentRoomMember.roomId === roomId) {
+          const updatedMember = {
+            ...currentRoomMember,
+            isMuted,
+            muteUntil: muteUntil || undefined, // 将 null 转换为 undefined
+          };
+          setCurrentRoomMember(updatedMember);
+        } else {
+          // 房间不匹配时，强制重新获取成员信息
+          fetchCurrentMemberInfo(roomId);
+        }
+      } else {
+        // currentRoomMember 为空时，尝试获取
+        fetchCurrentMemberInfo(roomId);
+      }
+    },
     fetchRoomMembers,
     removeUser,
     removeRoom,
     onWarning: showWarning,
+    onInfo: showInfo,
   });
   
   // 当前聊天室的消息
@@ -476,7 +498,10 @@ const App: React.FC = () => {
           className={`flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out ${showUserPanel ? 'w-60 opacity-100' : 'w-0 opacity-0 pointer-events-none'}`}
           aria-hidden={!showUserPanel}
         >
-          <UserListPanel users={users} />
+          <UserListPanel 
+            users={users} 
+            onRemoveUser={removeUser}
+          />
         </div>
       </div>
 

@@ -17,7 +17,7 @@ import type { Message } from '../types';
 export interface SendMessageRequest {
   type: 'text' | 'image' | 'file';
   text: string;
-  replyToMessageId?: string;
+  quotedMessageId?: string;  // 引用的消息ID（用于回复功能）
 }
 
 // 发送消息响应
@@ -197,7 +197,7 @@ export const toMessage = (item: MessageListItem, currentUserId: string): Message
   roomId: item.roomId,
   userId: item.userId,
   userName: item.userName || item.nickname || item.username || '未知用户',
-  importmessageId: item.replyTo?.messageId || '',
+  quotedMessageId: item.replyTo?.messageId,  // 引用的消息ID
   type: item.type as Message['type'],
   text: item.text,
   time: item.time || item.createdTime || new Date().toISOString(),

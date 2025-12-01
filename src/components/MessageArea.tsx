@@ -19,6 +19,7 @@ interface MessageAreaProps {
   onDeleteMessage?: (roomId: string, messageId: string) => void;
   onUpdateMessage?: (roomId: string, messageId: string, text: string) => void;
   onReplyMessage?: (messageId: string) => void;
+  onRemoveUser?: (userId: string) => void;
 }
 
 const MessageArea: React.FC<MessageAreaProps> = ({ 
@@ -28,6 +29,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
   onDeleteMessage,
   onUpdateMessage,
   onReplyMessage,
+  onRemoveUser,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
@@ -328,8 +330,11 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       case 'notifications':
       case 'help':
       case 'feedback':
-      case 'report':
       case 'kick':
+        closeContextMenu();
+        await handleKickMember(data);
+        break;
+      case 'report':
         closeContextMenu();
         api.info({ 
           message: '功能开发中', 
@@ -408,6 +413,66 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       console.error('禁言用户失败:', err);
       api.error({
         message: '禁言失败',
+        description: '网络错误，请稍后重试',
+      });
+    }
+  };
+
+  // 踢出成员
+  const handleKickMember = async (userId: string) => {
+    if (!currentRoomMember?.roomId) return;
+    
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      // 获取目标用户的成员信息
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        userId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      // 执行踢出
+      const response = await memberService.kickMember(
+        currentRoomMember.roomId,
+        {
+          memberid: memberInfoResponse.data.memberId,
+          reason: '违反聊天室规则',
+        }
+      );
+      
+      if (response.code === 200) {
+        // 乐观更新：立即从用户列表中移除
+        onRemoveUser?.(userId);
+        
+        api.success({
+          message: '踢出成功',
+          description: `已将 ${targetUser.name} 移出聊天室`,
+        });
+      } else {
+        api.error({
+          message: '踢出失败',
+          description: response.message || '踢出操作失败',
+        });
+      }
+    } catch (err) {
+      console.error('踢出成员失败:', err);
+      api.error({
+        message: '踢出失败',
         description: '网络错误，请稍后重试',
       });
     }
@@ -611,6 +676,24 @@ const MessageArea: React.FC<MessageAreaProps> = ({
           const senderAvatar = message.isOwn 
             ? (user?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg')
             : (users.find(u => u.userId === message.userId)?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg');
+          
+          // 系统通知消息特殊处理
+          if (message.type === 'system_notification') {
+            return (
+              <div
+                key={message.messageId}
+                data-message-id={message.messageId}
+                className={`flex justify-center ${
+                  isVisible ? 'animate-fade-in' : 'opacity-0'
+                }`}
+                style={isVisible ? { animationDelay: '0s' } : undefined}
+              >
+                <div className="px-3 py-1 rounded-full bg-gray-800/50 text-gray-400 text-xs">
+                  {message.text}
+                </div>
+              </div>
+            );
+          }
           
           return (
             <div

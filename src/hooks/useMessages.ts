@@ -70,7 +70,7 @@ export const useMessages = ({
           roomId: item.roomId || roomId,
           userId: item.userId,
           userName: item.userName || item.nickname || item.username || '未知用户',
-          importmessageId: '',
+          quotedMessageId: item.replyTo?.messageId,  // 引用的消息ID
           type: item.type as Message['type'],
           text: item.text || '',
           time: item.time || item.createdTime || new Date().toISOString(),
@@ -147,18 +147,18 @@ export const useMessages = ({
   }, []);
 
   // 通过 HTTP 发送消息
-  const sendMessageViaHttp = useCallback(async (roomId: string, text: string, replyTo?: string) => {
+  const sendMessageViaHttp = useCallback(async (roomId: string, text: string, quotedMsgId?: string) => {
     if (!user) {
       console.log('[useMessages] HTTP发送失败: 用户未登录');
       return;
     }
     
-    console.log('[useMessages] 通过 HTTP 发送消息:', { roomId, text, replyTo });
+    console.log('[useMessages] 通过 HTTP 发送消息:', { roomId, text, quotedMessageId: quotedMsgId });
     try {
       const response = await messageService.sendMessage(roomId, {
         type: 'text',
         text,
-        replyToMessageId: replyTo,
+        quotedMessageId: quotedMsgId,  // 使用quotedMessageId而不是replyToMessageId
       });
       console.log('[useMessages] HTTP 响应:', response);
       
@@ -173,7 +173,7 @@ export const useMessages = ({
             roomId: roomId,
             userId: user.userId,
             userName: user.nickname || user.username || '我',
-            importmessageId: replyTo || '',
+            quotedMessageId: quotedMsgId,  // 引用的消息ID
             type: 'text',
             text: text,
             time: messageData.sendTime || new Date().toISOString(),
@@ -194,18 +194,18 @@ export const useMessages = ({
   }, [user, onError, addMessageToRoom]);
 
   // 发送消息
-  const sendMessage = useCallback(async (roomId: string, text: string, replyTo?: string) => {
-    console.log('[useMessages] 准备发送消息:', { roomId, text, replyTo, isWSConnected: wsClient.isConnected });
+  const sendMessage = useCallback(async (roomId: string, text: string, quotedMsgId?: string) => {
+    console.log('[useMessages] 准备发送消息:', { roomId, text, quotedMessageId: quotedMsgId, isWSConnected: wsClient.isConnected });
     
     // 优先使用 WebSocket 发送
     if (wsClient.isConnected) {
       console.log('[useMessages] 使用 WebSocket 发送消息');
-      const sent = wsClient.sendChatMessage(roomId, text, 'text', replyTo);
+      const sent = wsClient.sendChatMessage(roomId, text, 'text', quotedMsgId);
       console.log('[useMessages] WebSocket 发送结果:', sent);
       if (!sent) {
         // WebSocket 发送失败，回退到 HTTP
         console.log('[useMessages] WebSocket 发送失败，回退到 HTTP');
-        await sendMessageViaHttp(roomId, text, replyTo);
+        await sendMessageViaHttp(roomId, text, quotedMsgId);
       } else {
         // WebSocket 发送成功，立即添加临时消息（乐观更新）
         // 使用临时ID，等待服务器广播真实消息后会被替换
@@ -214,7 +214,7 @@ export const useMessages = ({
           roomId: roomId,
           userId: user!.userId,
           userName: user!.nickname || user!.username || '我',
-          importmessageId: replyTo || '',
+          quotedMessageId: quotedMsgId,  // 引用的消息ID
           type: 'text',
           text: text,
           time: new Date().toISOString(),
@@ -226,7 +226,7 @@ export const useMessages = ({
     } else {
       // WebSocket 未连接，使用 HTTP 发送
       console.log('[useMessages] WebSocket 未连接，使用 HTTP 发送');
-      await sendMessageViaHttp(roomId, text, replyTo);
+      await sendMessageViaHttp(roomId, text, quotedMsgId);
     }
   }, [sendMessageViaHttp, user, addMessageToRoom]);
 

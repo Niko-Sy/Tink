@@ -14,9 +14,10 @@ import MuteMemberModal from './MuteMemberModal';
 
 interface UserListPanelProps {
   users: User[];
+  onRemoveUser?: (userId: string) => void;
 }
 
-const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
+const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showMuteModal, setShowMuteModal] = useState(false);
@@ -133,11 +134,7 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
         await handleUnmuteMember(userId);
         break;
       case 'kick':
-        console.log('踢出用户:', targetUser);
-        api.info({
-          message: '踢出功能',
-          description: '踢出功能开发中，敬请期待！',
-        });
+        await handleKickMember(userId);
         break;
       case 'setAdmin':
         await handleSetAdmin(userId);
@@ -207,6 +204,66 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users }) => {
       console.error('禁言用户失败:', err);
       api.error({
         message: '禁言失败',
+        description: '网络错误，请稍后重试',
+      });
+    }
+  };
+
+  // 踢出成员
+  const handleKickMember = async (userId: string) => {
+    if (!currentRoomMember?.roomId) return;
+    
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) {
+      api.error({
+        message: '操作失败',
+        description: '未找到目标用户',
+      });
+      return;
+    }
+    
+    try {
+      // 获取目标用户的成员信息
+      const memberInfoResponse = await memberService.getMemberInfo(
+        currentRoomMember.roomId,
+        userId
+      );
+      
+      if (memberInfoResponse.code !== 200 || !memberInfoResponse.data) {
+        api.error({
+          message: '获取用户信息失败',
+          description: memberInfoResponse.message || '无法获取成员信息',
+        });
+        return;
+      }
+      
+      // 执行踢出
+      const response = await memberService.kickMember(
+        currentRoomMember.roomId,
+        {
+          memberid: memberInfoResponse.data.memberId,
+          reason: '违反聊天室规则',
+        }
+      );
+      
+      if (response.code === 200) {
+        // 乐观更新：立即从用户列表中移除
+        onRemoveUser?.(userId);
+        
+        api.success({
+          message: '踢出成功',
+          description: `已将 ${targetUser.name} 移出聊天室`,
+        });
+      } else {
+        api.error({
+          message: '踢出失败',
+          description: response.message || '踢出操作失败',
+        });
+      }
+    } catch (err) {
+      console.error('踢出成员失败:', err);
+      api.error({
+        message: '踢出失败',
         description: '网络错误，请稍后重试',
       });
     }

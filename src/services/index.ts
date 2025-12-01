@@ -28,4 +28,4 @@ export type { MemberListItem, MemberStatusFilter, MuteMemberRequest, MuteMemberR
 
 // WebSocket 服务
 export { wsClient, WebSocketClient } from './websocket';
-export type { WSMessage, WSSendMessage, WSMessageType, WSNewMessage, WSUserStatus, WSRoomMember, WSMute, WSError } from './websocket';
+export type { WSMessage, WSSendMessage, WSMessageType, WSNewMessage, WSUserStatus, WSRoomMember, WSNotification, WSMute, WSError } from './websocket';

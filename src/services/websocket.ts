@@ -35,14 +35,14 @@ export interface WSSendMessage extends WSMessage {
 
 // 服务端推送的消息类型
 export type WSMessageType =
-  | 'message'      // 新消息/消息编辑/消息删除
-  | 'user_status'  // 用户上下线
-  | 'room_member'  // 成员变动
-  | 'room'         // 房间操作响应
-  | 'typing'       // 正在输入
-  | 'mute'         // 禁言通知
-  | 'pong'         // 心跳响应
-  | 'error';       // 错误消息
+  | 'message'       // 新消息/消息编辑/消息删除
+  | 'user_status'   // 用户上下线
+  | 'room_member'   // 成员变动
+  | 'room'          // 房间操作响应
+  | 'typing'        // 正在输入
+  | 'notification'  // 系统通知（包括禁言通知）
+  | 'pong'          // 心跳响应
+  | 'error';        // 错误消息
 
 // 新消息通知（根据 API 文档）
 export interface WSNewMessage {
@@ -52,6 +52,7 @@ export interface WSNewMessage {
     messageId: string;
     roomId: string;
     userId: string;
+    memberId?: string;  // 成员ID（用于系统通知消息，格式：M_U100000003_100000004）
     userName?: string;  // 用户名
     nickname?: string;  // 昵称（备用）
     avatarUrl?: string;  // 头像URL
@@ -81,29 +82,48 @@ export interface WSUserStatus {
   };
 }
 
-// 成员变动
+// 成员变动（根据API文档，action在顶层）
 export interface WSRoomMember {
   type: 'room_member';
+  action: 'joined' | 'left' | 'kicked';  // action在顶层
   data: {
-    action: 'join' | 'leave' | 'kick';
     roomId: string;
     userId: string;
-    nickname: string;
+    nickname?: string;
     operatorId?: string;
     reason?: string;
+    timestamp?: string;
   };
 }
 
-// 禁言通知
+// 系统通知（包括禁言通知）
+export interface WSNotification {
+  type: 'notification';
+  action: 'muted' | 'unmuted';  // 禁言/解除禁言
+  data: {
+    roomId: string;
+    userId?: string;       // 被禁言的用户ID（可能为空，表示当前用户）
+    operatorId?: string;   // 操作者ID
+    muteUntil?: string;    // 禁言到期时间（ISO 8601格式）
+    duration?: number;     // 禁言时长（秒），-1表示永久
+    permanent?: boolean;   // 是否永久禁言（可选）
+    reason?: string;       // 禁言原因
+    timestamp?: string;
+  };
+}
+
+// 禁言通知（保留用于向后兼容）
 export interface WSMute {
   type: 'mute';
+  action: 'muted' | 'unmuted';
   data: {
-    action: 'mute' | 'unmute';
     roomId: string;
-    userId: string;
-    operatorId: string;
+    userId?: string;
+    operatorId?: string;
     muteUntil?: string;
+    duration?: string;
     reason?: string;
+    timestamp?: string;
   };
 }
 
@@ -226,8 +246,11 @@ export class WebSocketClient {
       // 触发对应类型的事件
       this.emit(message.type, message);
       
-      // 同时触发通用消息事件
-      this.emit('message', message);
+      // 只对 type === 'message' 的消息触发通用消息事件
+      // 其他类型的消息（如 mute, user_status 等）只触发特定事件
+      if (message.type === 'message') {
+        this.emit('new_message', message);
+      }
       
     } catch (error) {
       console.error('[WebSocket] 消息解析失败:', error, '原始数据:', data);
