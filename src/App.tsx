@@ -66,7 +66,10 @@ const App: React.FC = () => {
   // 消息管理
   const {
     roomMessages,
+    isLoadingMoreMessages,
+    hasMoreMessages,
     fetchMessages,
+    fetchMoreMessages,
     sendMessage,
     addMessageToRoom,
     updateMessage,
@@ -324,7 +327,7 @@ const App: React.FC = () => {
                 <i className={`${chatRooms.find(room => room.roomId === activeChatRoom)?.icon} mr-3 text-lg`}></i>
                 {chatRooms.find(room => room.roomId === activeChatRoom)?.name}
               </div>
-              <div className="flex items-center pt-3 space-x-2 text-sm text-gray-500">
+              {activeChatRoom !== '100000001' && (<div className="flex items-center pt-3 space-x-2 text-sm text-gray-500">
                 <span>ID: {chatRooms.find(room => room.roomId === activeChatRoom)?.roomId}</span>
                 <button
                   className="p-1 hover:bg-gray-800 rounded transition-colors focus:outline-none bg-transparent"
@@ -338,7 +341,7 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                 </button>
-              </div>
+              </div>)}
             </div>
             
             {/* 右侧操作按钮组 */}
@@ -357,9 +360,9 @@ const App: React.FC = () => {
                 title={showUserPanel ? '收起用户列表' : '展开用户列表'}
               >
                 {showUserPanel ? (
-                  <MenuFoldOutlined className="text-lg" />
-                ) : (
                   <MenuUnfoldOutlined className="text-lg" />
+                ) : (
+                  <MenuFoldOutlined className="text-lg" />
                 )}
               </button>
             </div>
@@ -396,6 +399,10 @@ const App: React.FC = () => {
                     // 聚焦到输入框
                     document.querySelector<HTMLInputElement>('input[type="text"]')?.focus();
                   }}
+                  onRemoveUser={removeUser}
+                  onLoadMoreMessages={fetchMoreMessages}
+                  isLoadingMore={isLoadingMoreMessages}
+                  hasMore={hasMoreMessages[activeChatRoom] ?? true}
                 />
               {/* 输入控制区 */}
               <div className=" border-gray-800 bg-ground p-4">

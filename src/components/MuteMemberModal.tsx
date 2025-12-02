@@ -23,7 +23,7 @@ const MuteMemberModal: React.FC<MuteMemberModalProps> = ({
   };
 
   const handleClose = () => {
-    setDuration(10);
+    setDuration(300);
     setReason('');
     onClose();
   };

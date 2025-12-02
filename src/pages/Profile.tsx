@@ -237,11 +237,22 @@ const Profile: React.FC = () => {
         api.success({
           message: '密码修改成功',
           description: '请使用新密码重新登录',
-          duration: 2,
+          duration: 3,
         });
         setShowPasswordEdit(false);
         setNewPassword('');
         setOldPassword('');
+        
+        // 2秒后自动退出登录并跳转到登录页
+        setTimeout(async () => {
+          try {
+            await authService.logout();
+            navigate('/login');
+          } catch (err) {
+            console.error('Logout after password change failed:', err);
+            navigate('/login');
+          }
+        }, 2000);
       } else {
         api.error({
           message: '密码修改失败',

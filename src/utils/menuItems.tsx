@@ -161,10 +161,10 @@ export const MenuItems = {
   removeAdmin: (onClick: () => void, hidden?: boolean) => createMenuItem('removeAdmin', '解除管理员', 'RemoveAdmin', onClick, { color: 'warning', hidden }),
   
   // 消息相关
-  recall: (onClick: () => void, hidden?: boolean) => createMenuItem('recall', '撤回消息', 'Recall', onClick, { hidden }),
+  recall: (onClick: () => void, hidden?: boolean) => createMenuItem('recall', '撤回消息', 'Delete', onClick, { hidden }),
   edit: (onClick: () => void, hidden?: boolean) => createMenuItem('edit', '编辑消息', 'Edit', onClick, { hidden }),
   adminEdit: (onClick: () => void, hidden?: boolean) => createMenuItem('adminEdit', '编辑消息', 'Edit', onClick, { color: 'warning', hidden }),
-  delete: (onClick: () => void, hidden?: boolean) => createMenuItem('delete', '删除消息', 'Delete', onClick, { color: 'danger', hidden }),
+  delete: (onClick: () => void, hidden?: boolean) => createMenuItem('delete', '撤回消息', 'Delete', onClick, { color: 'danger', hidden }),
   reply: (onClick: () => void) => createMenuItem('reply', '回复消息', 'Reply', onClick),
   copy: (onClick: () => void) => createMenuItem('copy', '复制文本', 'Copy', onClick),
 };

@@ -20,6 +20,9 @@ interface MessageAreaProps {
   onUpdateMessage?: (roomId: string, messageId: string, text: string) => void;
   onReplyMessage?: (messageId: string) => void;
   onRemoveUser?: (userId: string) => void;
+  onLoadMoreMessages?: (roomId: string) => void;
+  isLoadingMore?: boolean;
+  hasMore?: boolean;
 }
 
 const MessageArea: React.FC<MessageAreaProps> = ({ 
@@ -30,8 +33,12 @@ const MessageArea: React.FC<MessageAreaProps> = ({
   onUpdateMessage,
   onReplyMessage,
   onRemoveUser,
+  onLoadMoreMessages,
+  isLoadingMore = false,
+  hasMore = true,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
   const { user, currentRoomMember } = useAuth();
   const navigate = useNavigate();
@@ -42,6 +49,13 @@ const MessageArea: React.FC<MessageAreaProps> = ({
   const [showMuteModal, setShowMuteModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState('');
+  const lastScrollTopRef = useRef<number>(0);
+  const isLoadingMoreRef = useRef<boolean>(false);
+  const previousMessageCountRef = useRef<number>(0);
+  const isInitialLoadRef = useRef<boolean>(true);
+  const anchorMessageIdRef = useRef<string | null>(null);
+  const shouldRestoreScrollRef = useRef<boolean>(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const [api, contextHolder] = notification.useNotification({
     placement: 'topRight',
     top: 24,
@@ -119,10 +133,164 @@ const MessageArea: React.FC<MessageAreaProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // 监听消息变化，自动滚动到底部
+  // 监听消息变化，智能滚动
   useEffect(() => {
-    scrollToBottom();
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const messageCount = messages.length;
+    const previousCount = previousMessageCountRef.current;
+
+    // 初始加载或切换房间时滚动到底部
+    if (isInitialLoadRef.current && messageCount > 0) {
+      // 使用 requestAnimationFrame 确保 DOM 渲染完成
+      requestAnimationFrame(() => {
+        scrollToBottom();
+      });
+      isInitialLoadRef.current = false;
+      previousMessageCountRef.current = messageCount;
+      return;
+    }
+
+    // 如果需要恢复滚动位置（加载历史消息后）
+    if (shouldRestoreScrollRef.current && anchorMessageIdRef.current) {
+      // 使用 requestAnimationFrame 确保 DOM 已更新
+      requestAnimationFrame(() => {
+        const anchorElement = document.querySelector(
+          `[data-message-id="${anchorMessageIdRef.current}"]`
+        );
+        if (anchorElement && container) {
+          // 计算锚点元素距离容器顶部的距离
+          const anchorTop = (anchorElement as HTMLElement).offsetTop;
+          // 恢复到加载前的视觉位置
+          container.scrollTop = anchorTop - 100; // 保持一些顶部边距
+          
+          // 恢复滚动位置后重新检查按钮显示状态
+          const scrollHeight = container.scrollHeight;
+          const clientHeight = container.clientHeight;
+          const scrollTop = container.scrollTop;
+          const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+          const lastTenMessagesHeight = 10 * 80;
+          setShowScrollToBottom(distanceFromBottom > lastTenMessagesHeight);
+        }
+        // 重置标记
+        shouldRestoreScrollRef.current = false;
+        anchorMessageIdRef.current = null;
+        isLoadingMoreRef.current = false;
+      });
+      previousMessageCountRef.current = messageCount;
+      return;
+    }
+
+    // 如果正在加载更多消息（但还未完成），不做任何滚动
+    if (isLoadingMoreRef.current) {
+      previousMessageCountRef.current = messageCount;
+      return;
+    }
+
+    // 如果消息数量增加（新消息到达）
+    if (messageCount > previousCount) {
+      // 检查用户是否在底部附近（容差 100px）
+      const isNearBottom = 
+        container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      
+      // 只有在底部附近才自动滚动
+      if (isNearBottom) {
+        requestAnimationFrame(() => {
+          scrollToBottom();
+        });
+      }
+    }
+
+    previousMessageCountRef.current = messageCount;
   }, [messages]);
+
+  // 切换聊天室时重置初始加载标记
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    previousMessageCountRef.current = 0;
+  }, [activeChatRoom]);
+
+  // 滚动事件处理 - 加载更多历史消息
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    let scrollTimer: ReturnType<typeof setTimeout>;
+    const handleScroll = () => {
+      // 防抖处理
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const scrollTop = container.scrollTop;
+        const scrollThreshold = 100; // 滚动阈值（像素）
+        
+        // 检查是否需要显示"回到底部"按钮
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+        
+        // 计算最后10条消息的大概高度（假设每条消息平均80px）
+        const lastTenMessagesHeight = 10 * 80;
+        
+        // 当距离底部超过最后10条消息的高度时显示按钮
+        setShowScrollToBottom(distanceFromBottom > lastTenMessagesHeight);
+        
+        // 检查是否接近顶部且正在向上滚动
+        if (
+          scrollTop < scrollThreshold &&
+          scrollTop < lastScrollTopRef.current &&
+          !isLoadingMoreRef.current &&
+          hasMore &&
+          messages.length > 0
+        ) {
+          console.log('[MessageArea] 触发加载更多历史消息');
+          isLoadingMoreRef.current = true;
+          
+          // 找到当前可见的第一条消息作为锚点（大厂方案）
+          const visibleMessages = Array.from(
+            container.querySelectorAll('[data-message-id]')
+          );
+          
+          // 找到第一个在视口中的消息
+          let anchorMessage = null;
+          for (const msg of visibleMessages) {
+            const rect = msg.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            if (rect.top >= containerRect.top && rect.top <= containerRect.bottom) {
+              anchorMessage = msg;
+              break;
+            }
+          }
+          
+          // 如果没找到可见消息，使用第一条消息作为锚点
+          if (!anchorMessage && messages.length > 0) {
+            anchorMessageIdRef.current = messages[0].messageId;
+          } else if (anchorMessage) {
+            anchorMessageIdRef.current = anchorMessage.getAttribute('data-message-id');
+          }
+          
+          // 标记需要恢复滚动位置
+          shouldRestoreScrollRef.current = true;
+          
+          // 触发加载
+          onLoadMoreMessages?.(activeChatRoom);
+        }
+        
+        lastScrollTopRef.current = scrollTop;
+      }, 150); // 150ms 防抖延迟
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      clearTimeout(scrollTimer);
+    };
+  }, [activeChatRoom, messages, hasMore, onLoadMoreMessages]);
+
+  // 同步 isLoadingMore 状态到 ref
+  useEffect(() => {
+    isLoadingMoreRef.current = isLoadingMore;
+  }, [isLoadingMore]);
 
   // 生成消息菜单项
   const generateMessageMenuItems = (messageId: string, isOwn: boolean): MenuItemType[] => {
@@ -133,6 +301,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
 
     // 自己的消息
     if (isOwn) {
+      // 撤回/删除自己的消息
       if (permissionChecker.canDeleteMessage(user, currentRoomMember, message)) {
         items.push(MenuItems.recall(() => {
           handleRecallMessage(activeChatRoom, messageId).then(() => {
@@ -141,6 +310,8 @@ const MessageArea: React.FC<MessageAreaProps> = ({
           closeContextMenu();
         }));
       }
+      
+      // 编辑自己的消息（2分钟内）
       if (permissionChecker.canEditMessage(user, currentRoomMember, message)) {
         items.push(MenuItems.edit(() => {
           setEditingMessageId(messageId);
@@ -149,14 +320,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         }));
       }
     } else {
-      // 管理员可以编辑/删除他人消息
-      if (permissionChecker.canEditMessage(user, currentRoomMember, message)) {
-        items.push(MenuItems.adminEdit(() => {
-          setEditingMessageId(messageId);
-          setEditText(message.text);
-          closeContextMenu();
-        }));
-      }
+      // 他人的消息 - 管理员和房主只能删除，不能编辑
       if (permissionChecker.canDeleteMessage(user, currentRoomMember, message)) {
         items.push(MenuItems.delete(() => {
           handleRecallMessage(activeChatRoom, messageId).then(() => {
@@ -167,12 +331,15 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       }
     }
 
+    // 回复功能对所有消息可用
     items.push(MenuItems.reply(() => {
       handleReplyMessage(messageId, (id) => {
         onReplyMessage?.(id);
       });
       closeContextMenu();
     }));
+    
+    // 复制功能对所有消息可用
     items.push(MenuItems.copy(() => {
       handleCopyMessage(message.text);
       closeContextMenu();
@@ -323,13 +490,69 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         await handleRemoveAdmin(data);
         break;
       case 'privateMessage':
+        closeContextMenu();
+        api.info({ 
+          message: '功能开发中', 
+          description: '此功能正在开发中，敬请期待！', 
+          duration: 2 
+        });
+        break;
       case 'mention':
+        closeContextMenu();
+        api.info({ 
+          message: '功能开发中', 
+          description: '此功能正在开发中，敬请期待！', 
+          duration: 2 
+        });
+        break;
       case 'addFriend':
+        closeContextMenu();
+        api.info({ 
+          message: '功能开发中', 
+          description: '此功能正在开发中，敬请期待！', 
+          duration: 2 
+        });
+        break;
       case 'accountSettings':
+        closeContextMenu();
+        api.info({ 
+          message: '功能开发中', 
+          description: '此功能正在开发中，敬请期待！', 
+          duration: 2 
+        });
+        break;
       case 'privacy':
+        closeContextMenu();
+        api.info({ 
+          message: '功能开发中', 
+          description: '此功能正在开发中，敬请期待！', 
+          duration: 2 
+        });
+        break;
       case 'notifications':
+        closeContextMenu();
+        api.info({ 
+          message: '功能开发中', 
+          description: '此功能正在开发中，敬请期待！', 
+          duration: 2 
+        });
+        break;
       case 'help':
+        closeContextMenu();
+        api.info({ 
+          message: '功能开发中', 
+          description: '此功能正在开发中，敬请期待！', 
+          duration: 2 
+        });
+        break;
       case 'feedback':
+        closeContextMenu();
+        api.info({ 
+          message: '功能开发中', 
+          description: '此功能正在开发中，敬请期待！', 
+          duration: 2 
+        });
+        break;
       case 'kick':
         closeContextMenu();
         await handleKickMember(data);
@@ -669,6 +892,28 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       />
       
       <div className="flex-1 overflow-y-auto p-6 bg-ground relative">
+        <div 
+          ref={messagesContainerRef}
+          className="h-full overflow-y-auto"
+        >
+        {/* 加载更多指示器 */}
+        {isLoadingMore && (
+          <div className="flex justify-center py-4">
+            <div className="flex items-center space-x-2 text-gray-400">
+              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span className="text-sm">加载历史消息...</span>
+            </div>
+          </div>
+        )}
+      
+      {!hasMore && messages.length > 0 && (
+        <div className="flex justify-center py-2">
+          <span className="text-xs text-gray-500">没有更多历史消息了</span>
+        </div>
+      )}
       <div className="space-y-4">
         {messages.map((message) => {
           const isVisible = visibleMessages.has(message.messageId);
@@ -676,6 +921,11 @@ const MessageArea: React.FC<MessageAreaProps> = ({
           const senderAvatar = message.isOwn 
             ? (user?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg')
             : (users.find(u => u.userId === message.userId)?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg');
+          
+          // 查找被引用的消息
+          const quotedMessage = message.quotedMessageId 
+            ? messages.find(m => m.messageId === message.quotedMessageId)
+            : null;
           
           // 系统通知消息特殊处理
           if (message.type === 'system_notification') {
@@ -734,6 +984,25 @@ const MessageArea: React.FC<MessageAreaProps> = ({
                 }`}
                 onContextMenu={(e) => handleMessageContextMenu(e, message)}
                 >
+                {/* 引用的消息显示 */}
+                {quotedMessage && (
+                  <div className={`mb-2 pb-2 border-l-2 pl-2 text-xs ${
+                    message.isOwn 
+                      ? 'border-gray-500 bg-gray-600/30' 
+                      : 'border-gray-600 bg-gray-700/30'
+                  } rounded p-2`}>
+                    <div className="text-gray-400 mb-1">
+                      回复 {quotedMessage.userName || '匿名用户'}:
+                    </div>
+                    <div className={`${
+                      message.isOwn ? 'text-gray-300' : 'text-gray-400'
+                    } truncate`}>
+                      {quotedMessage.text.length > 50 
+                        ? `${quotedMessage.text.substring(0, 50)}...` 
+                        : quotedMessage.text}
+                    </div>
+                  </div>
+                )}
                 {message.text}
               </div>
               {message.isOwn && (
@@ -759,6 +1028,32 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         })}
         <div ref={messagesEndRef} />
       </div>
+      </div>
+      
+      {/* 回到底部按钮 - 浮动在外层容器上 */}
+      {showScrollToBottom && (
+        <button
+          onClick={() => {
+            scrollToBottom();
+            setShowScrollToBottom(false);
+          }}
+          className="absolute bottom-6 right-6 z-10 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110 group"
+          title="回到底部"
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            className="h-5 w-5" 
+            viewBox="0 0 20 20" 
+            fill="currentColor"
+          >
+            <path 
+              fillRule="evenodd" 
+              d="M14.707 12.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 14.586V3a1 1 0 012 0v11.586l2.293-2.293a1 1 0 011.414 0z" 
+              clipRule="evenodd" 
+            />
+          </svg>
+        </button>
+      )}
 
       {/* 右键菜单 */}
       {contextMenu && (
@@ -781,7 +1076,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
     </div>
     
     {/* 编辑消息对话框 */}
-    <Modal
+    <Modal className=''
       title="编辑消息"
       open={editingMessageId !== null}
       onOk={handleConfirmEdit}

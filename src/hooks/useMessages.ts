@@ -14,7 +14,10 @@ import {
 export interface UseMessagesReturn {
   roomMessages: Record<string, Message[]>;
   isLoadingMessages: boolean;
+  isLoadingMoreMessages: boolean;
+  hasMoreMessages: Record<string, boolean>;
   fetchMessages: (roomId: string, force?: boolean) => Promise<void>;
+  fetchMoreMessages: (roomId: string) => Promise<void>;
   sendMessage: (roomId: string, text: string, replyTo?: string) => Promise<void>;
   addMessageToRoom: (roomId: string, message: Message) => void;
   updateMessage: (roomId: string, messageId: string, text: string) => void;
@@ -33,6 +36,8 @@ export const useMessages = ({
 }: UseMessagesOptions): UseMessagesReturn => {
   const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>({});
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState<Record<string, boolean>>({});
   const loadedRoomsRef = useRef<Set<string>>(new Set());
 
   // 获取聊天室消息历史
@@ -70,7 +75,7 @@ export const useMessages = ({
           roomId: item.roomId || roomId,
           userId: item.userId,
           userName: item.userName || item.nickname || item.username || '未知用户',
-          quotedMessageId: item.replyTo?.messageId,  // 引用的消息ID
+          quotedMessageId: item.replyToMessageId || item.replyTo?.messageId,  // 后端返回 replyToMessageId，兼容旧格式 replyTo.messageId
           type: item.type as Message['type'],
           text: item.text || '',
           time: item.time || item.createdTime || new Date().toISOString(),
@@ -250,16 +255,101 @@ export const useMessages = ({
     }));
   }, []);
 
+  // 加载更多历史消息（游标分页）
+  const fetchMoreMessages = useCallback(async (roomId: string) => {
+    if (!user || roomId === '100000001' || isLoadingMoreMessages) {
+      return;
+    }
+    
+    const currentMessages = roomMessages[roomId] || [];
+    if (currentMessages.length === 0) {
+      console.log('[useMessages] 没有消息，无法加载更多');
+      return;
+    }
+    
+    // 检查是否还有更多消息
+    if (hasMoreMessages[roomId] === false) {
+      console.log('[useMessages] 没有更多历史消息了');
+      return;
+    }
+    
+    // 获取最早的消息ID作为游标
+    const oldestMessageId = currentMessages[0].messageId;
+    console.log(`[useMessages] 加载房间 ${roomId} 更多历史消息，游标: ${oldestMessageId}`);
+    
+    setIsLoadingMoreMessages(true);
+    try {
+      const response = await messageService.getMessageHistory(roomId, {
+        before: oldestMessageId,
+        pageSize: 50,
+      });
+      
+      if (response.code === 200 && response.data) {
+        const messageList = response.data.messages || response.data.list || [];
+        
+        if (!Array.isArray(messageList) || messageList.length === 0) {
+          console.log('[useMessages] 没有更多历史消息');
+          setHasMoreMessages(prev => ({ ...prev, [roomId]: false }));
+          setIsLoadingMoreMessages(false);
+          return;
+        }
+        
+        // 转换消息格式
+        const fetchedMessages: Message[] = messageList.map(item => ({
+          messageId: item.messageId,
+          roomId: item.roomId || roomId,
+          userId: item.userId,
+          userName: item.userName || item.nickname || item.username || '未知用户',
+          quotedMessageId: item.replyToMessageId || item.replyTo?.messageId,
+          type: item.type as Message['type'],
+          text: item.text || '',
+          time: item.time || item.createdTime || new Date().toISOString(),
+          isOwn: item.isOwn !== undefined ? item.isOwn : (item.userId === user.userId),
+        }));
+        
+        // 按时间排序（从旧到新）
+        fetchedMessages.sort((a, b) => {
+          const timeA = new Date(a.time).getTime();
+          const timeB = new Date(b.time).getTime();
+          return timeA - timeB;
+        });
+        
+        // 将新消息插入到现有消息前面
+        setRoomMessages(prev => ({
+          ...prev,
+          [roomId]: [...fetchedMessages, ...currentMessages],
+        }));
+        
+        // 更新是否还有更多消息的状态
+        setHasMoreMessages(prev => ({
+          ...prev,
+          [roomId]: response.data?.hasMore ?? true,
+        }));
+        
+        console.log(`[useMessages] 加载了 ${fetchedMessages.length} 条历史消息`);
+      }
+    } catch (err) {
+      console.error('[useMessages] 加载更多消息失败:', err);
+      onError?.('加载失败', '无法加载更多历史消息', 2);
+    } finally {
+      setIsLoadingMoreMessages(false);
+    }
+  }, [user, roomMessages, hasMoreMessages, isLoadingMoreMessages, onError]);
+
   // 清空房间缓存，用于强制刷新
   const clearRoomCache = useCallback((roomId: string) => {
     console.log(`[useMessages] 清空房间 ${roomId} 的缓存`);
     loadedRoomsRef.current.delete(roomId);
+    setHasMoreMessages(prev => ({ ...prev, [roomId]: true }));
   }, []);
 
   return {
     roomMessages,
     isLoadingMessages,
+    isLoadingMoreMessages,
+    hasMoreMessages,
     fetchMessages,
+    fetchMoreMessages,
     sendMessage,
     addMessageToRoom,
     updateMessage,

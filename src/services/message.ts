@@ -46,7 +46,8 @@ export interface MessageListItem {
   isEdited: boolean;
   editedAt?: string | null;  // 实际后端返回的字段
   isOwn?: boolean;  // 实际后端返回的字段
-  replyTo?: {
+  replyToMessageId?: string;  // 后端返回的引用消息ID（新格式）
+  replyTo?: {  // 旧格式，兼容保留
     messageId: string;
     userId: string;
     nickname: string;
@@ -197,7 +198,7 @@ export const toMessage = (item: MessageListItem, currentUserId: string): Message
   roomId: item.roomId,
   userId: item.userId,
   userName: item.userName || item.nickname || item.username || '未知用户',
-  quotedMessageId: item.replyTo?.messageId,  // 引用的消息ID
+  quotedMessageId: item.replyToMessageId || item.replyTo?.messageId,  // 优先使用 replyToMessageId，兼容旧格式
   type: item.type as Message['type'],
   text: item.text,
   time: item.time || item.createdTime || new Date().toISOString(),

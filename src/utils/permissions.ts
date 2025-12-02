@@ -163,26 +163,32 @@ export const permissionChecker: PermissionChecker = {
       return false;
     }
 
-    // 超级管理员可以编辑任何消息
-    if (user.systemRole === 'super_admin') {
-      return true;
+    // 只能编辑自己的消息，无论是否为管理员或房主
+    if (message.userId !== user.userId) {
+      return false;
     }
 
-    // 编辑自己的消息
-    if (message.userId === user.userId) {
-      return permissionChecker.hasPermission(
-        user,
-        member,
-        Permission.EDIT_OWN_MESSAGE
-      );
-    }
-
-    // 编辑他人的消息（需要管理员权限）
-    return permissionChecker.hasPermission(
+    // 检查是否有编辑自己消息的权限
+    if (!permissionChecker.hasPermission(
       user,
       member,
-      Permission.EDIT_ANY_MESSAGE
-    );
+      Permission.EDIT_OWN_MESSAGE
+    )) {
+      return false;
+    }
+
+    // 检查消息发送时间，超过2分钟不能编辑
+    if (message.time) {
+      const messageTime = new Date(message.time).getTime();
+      const currentTime = new Date().getTime();
+      const twoMinutesInMs = 2 * 60 * 1000; // 2分钟 = 120000毫秒
+      
+      if (currentTime - messageTime > twoMinutesInMs) {
+        return false;
+      }
+    }
+
+    return true;
   },
 
   /**

@@ -71,8 +71,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         break;
       case 'logout':
         console.log('退出登录');
-        logout();
-        navigate('/login');
+        logout().then(() => {
+          navigate('/login');
+        });
         break;
     }
   };

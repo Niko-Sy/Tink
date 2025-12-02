@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { notification } from 'antd';
+import { notification} from 'antd';
 import type { User } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { permissionChecker } from '../utils/permissions';
@@ -24,7 +24,7 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser }) =>
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState('');
   const { contextMenu, handleContextMenu, closeContextMenu } = useContextMenu();
-  const { user, currentRoomMember } = useAuth();
+  const { user, currentRoomMember} = useAuth();
   const [api, contextHolder] = notification.useNotification({
     placement: 'topRight',
     top: 24,
@@ -81,14 +81,32 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser }) =>
           description: '反馈建议功能开发中，敬请期待！',
         });
         break;
-      case 'logout':
-        console.log('退出登录');
-        api.warning({
-          message: '退出登录',
-          description: '是否确定退出登录？（此功能需要确认对话框）',
-        });
-        // TODO: 添加确认对话框后再执行 logout
-        break;
+      // case 'logout':
+      //   console.log('退出登录');
+      //   Modal.confirm({
+      //     title: '确认退出',
+      //     content: '确定要退出登录吗？',
+      //     okText: '确定',
+      //     cancelText: '取消',
+      //     onOk: async () => {
+      //       try {
+      //         await logout();
+      //         api.success({
+      //           message: '退出成功',
+      //           description: '已安全退出登录',
+      //           duration: 2,
+      //         });
+      //         navigate('/login');
+      //       } catch (err) {
+      //         api.error({
+      //           message: '退出失败',
+      //           description: '请稍后重试',
+      //           duration: 2,
+      //         });
+      //       }
+      //     },
+      //   });
+      //   break;
     }
   };
 
@@ -185,9 +203,9 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser }) =>
       
       if (response.code === 200) {
         const durationText = duration === 0 ? '永久' : 
-          duration < 60 ? `${duration}分钟` :
-          duration < 1440 ? `${Math.floor(duration / 60)}小时` :
-          `${Math.floor(duration / 1440)}天`;
+          duration < 3600 ? `${Math.floor(duration / 60)}分钟` :
+          duration < 86400 ? `${Math.floor(duration / 3600)}小时` :
+          `${Math.floor(duration / 86400)}天`;
         
         api.success({
           message: '禁言成功',
@@ -449,8 +467,8 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser }) =>
         createDivider(),
         MenuItems.help(() => handleSelfMenuAction('help')),
         MenuItems.feedback(() => handleSelfMenuAction('feedback')),
-        createDivider(),
-        MenuItems.logout(() => handleSelfMenuAction('logout')),
+        // createDivider(),
+        // MenuItems.logout(() => handleSelfMenuAction('logout')),
       ];
     }
     
