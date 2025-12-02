@@ -15,9 +15,10 @@ import MuteMemberModal from './MuteMemberModal';
 interface UserListPanelProps {
   users: User[];
   onRemoveUser?: (userId: string) => void;
+  onUpdateUserRole?: (userId: string, roomRole: 'owner' | 'admin' | 'member') => void;
 }
 
-const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser }) => {
+const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUpdateUserRole }) => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showMuteModal, setShowMuteModal] = useState(false);
@@ -81,32 +82,6 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser }) =>
           description: '反馈建议功能开发中，敬请期待！',
         });
         break;
-      // case 'logout':
-      //   console.log('退出登录');
-      //   Modal.confirm({
-      //     title: '确认退出',
-      //     content: '确定要退出登录吗？',
-      //     okText: '确定',
-      //     cancelText: '取消',
-      //     onOk: async () => {
-      //       try {
-      //         await logout();
-      //         api.success({
-      //           message: '退出成功',
-      //           description: '已安全退出登录',
-      //           duration: 2,
-      //         });
-      //         navigate('/login');
-      //       } catch (err) {
-      //         api.error({
-      //           message: '退出失败',
-      //           description: '请稍后重试',
-      //           duration: 2,
-      //         });
-      //       }
-      //     },
-      //   });
-      //   break;
     }
   };
 
@@ -377,11 +352,13 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser }) =>
       );
       
       if (response.code === 200) {
+        // 乐观更新：立即更新本地用户列表
+        onUpdateUserRole?.(userId, 'admin');
+        
         api.success({
           message: '设置成功',
           description: '已将该用户设置为管理员',
         });
-        // TODO: 刷新成员列表或更新本地状态
       } else {
         api.error({
           message: '设置失败',
@@ -432,11 +409,13 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser }) =>
       );
       
       if (response.code === 200) {
+        // 乐观更新：立即更新本地用户列表
+        onUpdateUserRole?.(userId, 'member');
+        
         api.success({
           message: '解除成功',
           description: '已将该用户解除管理员身份',
         });
-        // TODO: 刷新成员列表或更新本地状态
       } else {
         api.error({
           message: '解除失败',

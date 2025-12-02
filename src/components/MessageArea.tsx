@@ -20,6 +20,7 @@ interface MessageAreaProps {
   onUpdateMessage?: (roomId: string, messageId: string, text: string) => void;
   onReplyMessage?: (messageId: string) => void;
   onRemoveUser?: (userId: string) => void;
+  onUpdateUserRole?: (userId: string, roomRole: 'owner' | 'admin' | 'member') => void;
   onLoadMoreMessages?: (roomId: string) => void;
   isLoadingMore?: boolean;
   hasMore?: boolean;
@@ -33,6 +34,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
   onUpdateMessage,
   onReplyMessage,
   onRemoveUser,
+  onUpdateUserRole,
   onLoadMoreMessages,
   isLoadingMore = false,
   hasMore = true,
@@ -786,6 +788,9 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       );
       
       if (response.code === 200) {
+        // 乐观更新：立即更新本地用户列表
+        onUpdateUserRole?.(userId, 'admin');
+        
         api.success({
           message: '设置成功',
           description: '已将该用户设置为管理员',
@@ -838,6 +843,9 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       );
       
       if (response.code === 200) {
+        // 乐观更新：立即更新本地用户列表
+        onUpdateUserRole?.(userId, 'member');
+        
         api.success({
           message: '解除成功',
           description: '已将该用户解除管理员身份',
@@ -1076,7 +1084,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
     </div>
     
     {/* 编辑消息对话框 */}
-    <Modal className=''
+    <Modal
       title="编辑消息"
       open={editingMessageId !== null}
       onOk={handleConfirmEdit}
@@ -1087,6 +1095,9 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       okText="确定"
       cancelText="取消"
       maskClosable={false}
+      centered
+      destroyOnClose
+      keyboard={true}
     >
       <Input.TextArea
         value={editText}
@@ -1094,7 +1105,13 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         placeholder="请输入消息内容"
         autoSize={{ minRows: 3, maxRows: 8 }}
         maxLength={500}
-        showCount
+        showCount={{
+        formatter: ({ count, maxLength }) => (
+          <span style={{ color: '#efefef' }}>   {/* 这里决定颜色 */}
+            {count} / {maxLength}
+          </span>
+        ),
+      }}
       />
     </Modal>
     </>

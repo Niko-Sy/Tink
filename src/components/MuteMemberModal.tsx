@@ -47,9 +47,10 @@ const MuteMemberModal: React.FC<MuteMemberModalProps> = ({
       onCancel={handleClose}
       okText="确定"
       cancelText="取消"
+      destroyOnClose
       width={400}
     >
-      <div className="space-y-4 py-4">
+      <div className="space-y-2 pt-4">
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             禁言时长
@@ -71,9 +72,15 @@ const MuteMemberModal: React.FC<MuteMemberModalProps> = ({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="请输入禁言原因..."
-            rows={3}
-            maxLength={200}
-            showCount
+            rows={2}
+            maxLength={100}
+            showCount={{
+              formatter: ({ count, maxLength }) => (
+                <span style={{ color: '#efefef' }}>   {/* 这里决定颜色 */}
+                  {count} / {maxLength}
+                </span>
+              ),
+            }}
           />
         </div>
 

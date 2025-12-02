@@ -116,8 +116,8 @@ button:focus-visible {
 
 /* 通知项 - 统一灰黑色背景 */
 .ant-notification-notice {
-  background-color: #1f2937 !important;
-  border: 1px solid #374151 !important;
+  background-color: #29292B !important; /* secondary */
+  border: 1px solid #3A3A3C !important; /* grayborder */
   border-radius: 8px !important;
   padding: 16px 20px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
@@ -126,7 +126,7 @@ button:focus-visible {
 
 /* 成功通知 - 仅图标颜色 */
 .ant-notification-notice-success {
-  background-color: #1f2937 !important;
+  background-color: #29292B !important; /* secondary */
 }
 
 .ant-notification-notice-success .ant-notification-notice-icon {
@@ -135,7 +135,7 @@ button:focus-visible {
 
 /* 错误通知 - 仅图标颜色 */
 .ant-notification-notice-error {
-  background-color: #1f2937 !important;
+  background-color: #29292B !important; /* secondary */
 }
 
 .ant-notification-notice-error .ant-notification-notice-icon {
@@ -144,7 +144,7 @@ button:focus-visible {
 
 /* 警告通知 - 仅图标颜色 */
 .ant-notification-notice-warning {
-  background-color: #1f2937 !important;
+  background-color: #29292B !important; /* secondary */
 }
 
 .ant-notification-notice-warning .ant-notification-notice-icon {
@@ -153,7 +153,7 @@ button:focus-visible {
 
 /* 信息通知 - 仅图标颜色 */
 .ant-notification-notice-info {
-  background-color: #1f2937 !important;
+  background-color: #29292B !important; /* secondary */
 }
 
 .ant-notification-notice-info .ant-notification-notice-icon {
@@ -183,7 +183,7 @@ button:focus-visible {
 
 /* 关闭按钮 */
 .ant-notification-notice-close {
-  color: #9ca3af !important;
+  color: #A3A3A5 !important; /* gray-400 */
 }
 
 .ant-notification-notice-close:hover {
@@ -209,6 +209,279 @@ button:focus-visible {
 /* 自定义描述中的段落 */
 .ant-notification-notice-description p {
   margin: 4px 0;
+}
+
+/* ==================== Ant Design Modal 样式自定义 ==================== */
+
+/* Modal 遮罩层 */
+.ant-modal-mask {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* Modal 容器 */
+.ant-modal-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Modal 主体 */
+.ant-modal {
+  top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Modal 内容 */
+.ant-modal-content {
+  background-color: #29292B !important; /* secondary */
+  border-radius: 1rem !important;
+  border: 1px solid #3A3A3C !important; /* grayborder */
+  padding: 0 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Modal 头部 */
+.ant-modal-header {
+  background-color: #29292B !important; /* secondary */
+  border-bottom: none; /* grayborder */
+  padding: 1rem  1.75rem 0 1.75rem !important;
+  border-radius: 1rem 1rem 0 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Modal 标题 */
+.ant-modal-title {
+  color: white !important;
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+}
+
+/* Modal 主体内容 */
+.ant-modal-body {
+  background-color: #29292B !important; /* secondary */
+  padding: 0.75rem 1.5rem 1.25rem 1.5rem !important;
+  color: #d1d5db !important;
+}
+
+/* Modal 底部 */
+.ant-modal-footer {
+  background-color: #29292B !important; /* secondary */
+  border-top: none; /* grayborder */
+  padding: 0.25rem 1.5rem 0.75rem 1.5rem !important;
+  border-radius: 0 0 1rem 1rem !important;
+  margin-top: 0 !important;
+}
+
+/* Modal 关闭按钮 */
+.ant-modal-close {
+  color: #A3A3A5 !important; /* gray-400 */
+  top: 0.75rem !important;
+  right: 1.25rem !important;
+  background-color: none;
+}
+
+.ant-modal-close:hover {
+  color: white !important;
+}
+
+.ant-modal-close-x {
+  width: 2rem !important;
+  height: 2rem !important;
+  line-height: 2rem !important;
+  font-size: 1rem !important;
+}
+
+/* Modal 按钮样式 */
+.ant-modal-footer .ant-btn {
+  height: 34px !important;
+  border-radius: 0.5rem !important;
+  font-weight: 400 !important;
+  padding: 0 1rem !important;
+}
+
+/* 取消按钮 */
+.ant-modal-footer .ant-btn-default {
+  background-color: #4A4A4C !important; /* gray-600 */
+  border-color: #4A4A4C !important;
+  color: white !important;
+}
+
+.ant-modal-footer .ant-btn-default:hover {
+  background-color: #3A3A3C !important; /* grayborder */
+  border-color: #3A3A3C !important;
+}
+
+/* 确定按钮 */
+.ant-modal-footer .ant-btn-primary {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+}
+
+.ant-modal-footer .ant-btn-primary:hover {
+  background-color: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+}
+
+/* Input.TextArea 样式 */
+.ant-input {
+  background-color: #3A3A3C !important; /* grayborder */
+  /* border-color: #4A4A4C !important; gray-600 */
+  color: white !important;
+  border-radius: 0.5rem !important;
+}
+
+/* TextArea 容器（带字数统计的外层） */
+.ant-input-textarea-show-count {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+/* TextArea 内层 */
+.ant-input-textarea {
+  background-color: transparent !important;
+  border: none !important;
+  color: white !important;
+}
+
+.ant-input-textarea .ant-input {
+  background-color: #3A3A3C !important; /* grayborder */
+  border: 1px solid #4A4A4C !important; /* gray-600 */
+  border-radius: 0.5rem !important;
+}
+
+.ant-input:focus,
+.ant-input-focused {
+  background-color: #3A3A3C !important; /* grayborder */
+  border-color: #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+}
+
+.ant-input-textarea:focus,
+.ant-input-textarea-focused,
+.ant-input-textarea-show-count.ant-input-textarea-in-form-item:focus-within {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.ant-input-textarea .ant-input:focus,
+.ant-input-textarea .ant-input-focused {
+  border-color: #ffffff !important; /* 明亮蓝色 */
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3) !important;
+}
+
+.ant-input::placeholder,
+.ant-input-textarea::placeholder {
+  color: #5D5D5F !important; /* gray-500 */
+}
+
+/* TextArea 字数统计 */
+.ant-input-textarea-show-count::after {
+  color: white !important;
+}
+
+/* 禁用状态 */
+.ant-input-disabled,
+.ant-input-textarea-disabled {
+  background-color: #212123 !important; /* primary */
+  border-color: #3A3A3C !important; /* grayborder */
+  color: #5D5D5F !important; /* gray-500 */
+  cursor: not-allowed !important;
+}
+
+/* ==================== Ant Design Select 样式自定义 ==================== */
+
+/* Select 选择器 */
+.ant-select {
+  color: white !important;
+}
+
+.ant-select-selector {
+  background-color: #3A3A3C !important; /* grayborder */
+  border: 1px solid #4A4A4C !important; /* gray-600 */
+  color: white !important;
+  border-radius: 0.5rem !important;
+}
+
+.ant-select-arrow {
+  color: #A3A3A5 !important; /* gray-400 */
+}
+
+.ant-select-selection-item {
+  color: white !important;
+}
+
+.ant-select-selection-placeholder {
+  color: #5D5D5F !important; /* gray-500 */
+}
+
+/* Select 聚焦状态 */
+.ant-select-focused .ant-select-selector {
+  background-color: #3A3A3C !important;
+  border-color: #7a7a7a !important;
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3) !important;
+}
+
+/* Select 悬停状态 */
+.ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: #7a7a7a !important;
+}
+
+/* Select 下拉菜单 */
+.ant-select-dropdown {
+  background-color: #29292B !important; /* secondary */
+  border: 1px solid #3A3A3C !important; /* grayborder */
+  border-radius: 0.5rem !important;
+  padding: 0.25rem !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Select 选项 */
+.ant-select-item {
+  color: white !important;
+  border-radius: 0.375rem !important;
+  margin: 0.125rem 0 !important;
+}
+
+.ant-select-item-option {
+  background-color: transparent !important;
+  padding: 0.5rem 0.75rem !important;
+}
+
+/* Select 选项悬停 */
+.ant-select-item-option-active {
+  background-color: #3A3A3C !important; /* grayborder */
+}
+
+/* Select 选项选中 */
+.ant-select-item-option-selected {
+  background-color: #4A4A4C !important; /* gray-600 */
+  font-weight: 600 !important;
+}
+
+.ant-select-item-option-selected:hover {
+  background-color: #4A4A4C !important;
+}
+
+/* Select 禁用状态 */
+.ant-select-disabled .ant-select-selector {
+  background-color: #212123 !important; /* primary */
+  border-color: #3A3A3C !important;
+  color: #5D5D5F !important;
+  cursor: not-allowed !important;
+}
+
+/* Select 下拉菜单滚动条隐藏 */
+.ant-select-dropdown .rc-virtual-list-scrollbar {
+  display: none !important;
+}
+
+.ant-select-dropdown .rc-virtual-list-holder::-webkit-scrollbar {
+  display: none !important;
+}
+
+.ant-select-dropdown .rc-virtual-list-holder {
+  scrollbar-width: none !important;
 }
 
 /* ==================== 登录页面动画 ==================== */

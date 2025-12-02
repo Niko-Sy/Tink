@@ -13,6 +13,7 @@ export interface UseRoomMembersReturn {
   fetchCurrentMemberInfo: (roomId: string) => Promise<void>;
   updateUserStatus: (userId: string, status: 'online' | 'away' | 'busy' | 'offline') => void;
   updateUserMuteStatus: (userId: string, isMuted: boolean, muteUntil?: string | null) => void;
+  updateUserRole: (userId: string, roomRole: 'owner' | 'admin' | 'member') => void;
   removeUser: (userId: string) => void;
 }
 
@@ -156,6 +157,29 @@ export const useRoomMembers = ({
     });
   }, []); // 移除users依赖，避免闭包陷阱
 
+  // 更新用户角色
+  const updateUserRole = useCallback((userId: string, roomRole: 'owner' | 'admin' | 'member') => {
+    console.log(`[useRoomMembers] ✅ updateUserRole 被调用:`, { userId, roomRole });
+    
+    setUsers(prev => {
+      const targetUser = prev.find(u => u.userId === userId);
+      if (!targetUser) {
+        console.warn(`[useRoomMembers] ⚠️ 未找到用户 ${userId}`);
+        return prev;
+      }
+      
+      const updated = prev.map(u => 
+        u.userId === userId 
+          ? { ...u, roomRole }
+          : u
+      );
+      
+      console.log(`[useRoomMembers] ✅ 用户角色已更新: ${targetUser.name} - roomRole: ${targetUser.roomRole} → ${roomRole}`);
+      
+      return updated;
+    });
+  }, []);
+
   // 移除用户
   const removeUser = useCallback((userId: string) => {
     setUsers(prev => prev.filter(u => u.userId !== userId));
@@ -167,6 +191,7 @@ export const useRoomMembers = ({
     fetchCurrentMemberInfo,
     updateUserStatus,
     updateUserMuteStatus,
+    updateUserRole,
     removeUser,
   };
 };

@@ -90,9 +90,9 @@ const ChatRoomSettingsModal: React.FC<ChatRoomSettingsModalProps> = ({
 
   // 聊天室类型选项
   const typeOptions = [
-    { value: 'public', label: '公开', description: '任何人都可以查看和加入' },
-    { value: 'protected', label: '受保护', description: '需要密码才能加入' },
-    { value: 'private', label: '私密', description: '仅受邀请的成员可以加入' },
+    { value: 'public', label: '🌐公开', description: '任何人都可以查看和加入' },
+    { value: 'protected', label: '🔒受保护', description: '需要密码才能加入' },
+    { value: 'private', label: '🔐私密', description: '仅受邀请的成员可以加入' },
   ];
 
   // 验证表单

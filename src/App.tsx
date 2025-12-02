@@ -87,6 +87,7 @@ const App: React.FC = () => {
     fetchCurrentMemberInfo,
     updateUserStatus,
     updateUserMuteStatus,
+    updateUserRole,
     removeUser,
   } = useRoomMembers({
     user,
@@ -400,6 +401,7 @@ const App: React.FC = () => {
                     document.querySelector<HTMLInputElement>('input[type="text"]')?.focus();
                   }}
                   onRemoveUser={removeUser}
+                  onUpdateUserRole={updateUserRole}
                   onLoadMoreMessages={fetchMoreMessages}
                   isLoadingMore={isLoadingMoreMessages}
                   hasMore={hasMoreMessages[activeChatRoom] ?? true}
@@ -508,6 +510,7 @@ const App: React.FC = () => {
           <UserListPanel 
             users={users} 
             onRemoveUser={removeUser}
+            onUpdateUserRole={updateUserRole}
           />
         </div>
       </div>
