@@ -165,13 +165,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setLoading(false);
         return true;
       } else {
-        setError(response.message || '登录失败');
+        const errorMessage = response.message || '登录失败';
+        setError(errorMessage);
         setLoading(false);
         return false;
       }
     } catch (err) {
       const apiError = err as ApiError;
-      setError(apiError.message || '登录失败，请稍后重试');
+      const errorMessage = apiError.message || '登录失败，请稍后重试';
+      setError(errorMessage);
       setLoading(false);
       return false;
     }
@@ -250,9 +252,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // 清除错误
-  const clearError = () => {
+  const clearError = useCallback(() => {
     setError(null);
-  };
+  }, []);
 
   // 刷新用户信息
   const refreshUserInfo = async () => {

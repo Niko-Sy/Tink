@@ -13,13 +13,13 @@ import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axio
 const API_CONFIG = {
   // 开发环境
   development: {
-    baseURL: 'http://10.84.250.156:8080/api/v1',
-    wsURL: 'ws://10.84.250.156:8080/ws',
+    baseURL: 'http://120.27.227.190:8080/api/v1',
+    wsURL: 'ws://120.27.227.190:8080/ws',
   },
   // 生产环境
   production: {
-    baseURL: 'https://api.tink.chat/api/v1',
-    wsURL: 'wss://api.tink.chat/ws',
+    baseURL: 'http://120.27.227.190:8080/api/v1',
+    wsURL: 'ws://120.27.227.190:8080/ws',
   },
 };
 
@@ -137,7 +137,11 @@ const createApiInstance = (): AxiosInstance => {
       const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
       // Token 过期处理 - 尝试刷新
-      if (error.response?.status === 401 && !originalRequest._retry) {
+      // 注意：登录和注册接口返回 401 不应触发刷新逻辑
+      const isAuthEndpoint = originalRequest.url?.includes('/auth/login') || 
+                            originalRequest.url?.includes('/auth/register');
+      
+      if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
         originalRequest._retry = true;
 
         try {

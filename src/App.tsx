@@ -285,7 +285,7 @@ const App: React.FC = () => {
       {contextHolder}
       
       {/* 调试面板 */}
-      {showDebugPanel && (
+      {showDebugPanel && false && (
         <div className="fixed top-2 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900 border border-gray-700 rounded-lg p-3 text-xs font-mono shadow-lg max-w-2xl">
           <div className="flex justify-between items-center mb-2">
             <span className="font-bold text-yellow-400">调试信息</span>

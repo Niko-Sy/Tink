@@ -45,6 +45,7 @@ const Login: React.FC = () => {
   // 清除错误当切换模式时
   useEffect(() => {
     clearError();
+    setErrors(prev => ({ ...prev, api: '' }));
   }, [isLogin, clearError]);
 
   // 表单验证
@@ -59,13 +60,13 @@ const Login: React.FC = () => {
     let isValid = true;
 
     if (!formData.username.trim()) {
-      newErrors.username = '用户名不能为空';
+      newErrors.username = '账号不能为空';
       isValid = false;
     } else if (formData.username.length < 3) {
-      newErrors.username = '用户名至少3个字符';
+      newErrors.username = '账号至少3个字符';
       isValid = false;
     } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      newErrors.username = '用户名只能包含字母、数字和下划线';
+      newErrors.username = '账号只能包含字母、数字和下划线';
       isValid = false;
     }
 
@@ -99,11 +100,15 @@ const Login: React.FC = () => {
 
   // 处理登录
   const handleLogin = async () => {
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
+
+    // 清除之前的本地错误（不清除 AuthContext 的错误，让它自己管理）
+    setErrors(prev => ({ ...prev, api: '' }));
 
     // 显示加载动画
     setIsLoggingIn(true);
-    setErrors(prev => ({ ...prev, api: '' }));
 
     try {
       const success = await login({
@@ -114,8 +119,12 @@ const Login: React.FC = () => {
       if (success) {
         // 登录成功，跳转到主页
         navigate('/');
+      } else {
+        // 登录失败，停止加载动画（错误信息由 useEffect 监听 error 显示）
+        setIsLoggingIn(false);
       }
-    } finally {
+    } catch (err) {
+      // 捕获异常，停止加载动画
       setIsLoggingIn(false);
     }
   };
@@ -124,9 +133,12 @@ const Login: React.FC = () => {
   const handleRegister = async () => {
     if (!validateForm()) return;
 
+    // 清除之前的错误
+    setErrors(prev => ({ ...prev, api: '' }));
+    clearError();
+
     // 显示加载动画
     setIsLoggingIn(true);
-    setErrors(prev => ({ ...prev, api: '' }));
 
     try {
       const success = await register({
@@ -139,8 +151,12 @@ const Login: React.FC = () => {
       if (success) {
         // 注册成功，跳转到主页
         navigate('/');
+      } else {
+        // 注册失败，停止加载动画（错误信息由 useEffect 监听 error 显示）
+        setIsLoggingIn(false);
       }
-    } finally {
+    } catch (err) {
+      // 捕获异常，停止加载动画
       setIsLoggingIn(false);
     }
   };
@@ -248,7 +264,7 @@ const Login: React.FC = () => {
             {/* 用户名输入 */}
             <div className="transform transition-all duration-300 hover:scale-[1.02]">
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                用户名
+                账号
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -258,10 +274,11 @@ const Login: React.FC = () => {
                   type="text"
                   value={formData.username}
                   onChange={(e) => handleInputChange('username', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (isLogin ? handleLogin() : handleRegister())}
                   className={`w-full bg-gray-700 text-white rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 transition-all duration-200 ${
                     errors.username ? 'focus:ring-red-500 border border-red-500 shake' : 'focus:ring-blue-500 focus:shadow-lg focus:shadow-blue-500/20'
                   }`}
-                  placeholder="请输入用户名"
+                  placeholder="请输入账号"
                 />
               </div>
               {errors.username && (
@@ -283,6 +300,7 @@ const Login: React.FC = () => {
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
                     className={`w-full bg-gray-700 text-white rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 transition-all duration-200 ${
                       errors.email ? 'focus:ring-red-500 border border-red-500 shake' : 'focus:ring-blue-500 focus:shadow-lg focus:shadow-blue-500/20'
                     }`}
@@ -308,6 +326,7 @@ const Login: React.FC = () => {
                   type="password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (isLogin ? handleLogin() : handleRegister())}
                   className={`w-full bg-gray-700 text-white rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 transition-all duration-200 ${
                     errors.password ? 'focus:ring-red-500 border border-red-500 shake' : 'focus:ring-blue-500 focus:shadow-lg focus:shadow-blue-500/20'
                   }`}
@@ -333,6 +352,7 @@ const Login: React.FC = () => {
                     type="password"
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleRegister()}
                     className={`w-full bg-gray-700 text-white rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:ring-2 transition-all duration-200 ${
                       errors.confirmPassword ? 'focus:ring-red-500 border border-red-500 shake' : 'focus:ring-blue-500 focus:shadow-lg focus:shadow-blue-500/20'
                     }`}
@@ -347,6 +367,7 @@ const Login: React.FC = () => {
 
             {/* 登录/注册按钮 */}
             <button
+              type="button"
               onClick={isLogin ? handleLogin : handleRegister}
               disabled={isSubmitting}
               className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/50 active:scale-95 ${
@@ -369,6 +390,7 @@ const Login: React.FC = () => {
             {/* 切换登录/注册 */}
             <div className="text-center pt-4">
               <button
+                type="button"
                 onClick={toggleMode}
                 disabled={isSubmitting}
                 className={`text-blue-400 hover:text-blue-300 text-sm focus:outline-none transition-all duration-200 hover:underline transform hover:scale-105 ${
