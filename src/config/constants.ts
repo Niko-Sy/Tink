@@ -14,10 +14,10 @@ export const DEFAULT_AVATAR_URL = 'https://www.tastywhut.site/pic/avatars/Defaul
 // ============ API 配置 ============
 
 /** API 基础URL（从环境变量读取，如未设置则使用默认值） */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://120.27.227.190:8080/api/v1';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 /** WebSocket URL（从环境变量读取，如未设置则使用默认值） */
-export const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL || 'ws://120.27.227.190:8080/ws';
+export const WEBSOCKET_URL = import.meta.env.VITE_WEBSOCKET_URL;
 
 /** API 请求超时时间（毫秒） */
 export const API_TIMEOUT = 30000;
