@@ -133,11 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* 下方两列区域 */}
       <div className="flex flex-1 overflow-hidden">
         {/* 左侧列 - 用户头像和图标 */}
-        <div className="w-16 bg-ground flex flex-col items-center  border-gray-800">
-          
-          
-          
-          
+        <div className="w-16 bg-ground flex flex-col items-center  border-gray-800">   
           {/* 聊天图标按钮 */}
           <div className="p-2 border-gray-800 w-full flex justify-center">
             <button
@@ -281,7 +277,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <>
                       <span className="flex-1 text-sm">{room.name}</span>
                       {room.unread > 0 && (
-                        <span className="bg-gray-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        <span className="bg-red-500/70 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                           {room.unread}
                         </span>
                       )}
