@@ -9,7 +9,7 @@
 export const HOME_ROOM_ID = '100000001';
 
 /** 默认头像URL */
-export const DEFAULT_AVATAR_URL = 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg';
+export const DEFAULT_AVATAR_URL = 'https://www.tastywhut.site/pic/avatars/DefaultAvatar.png';
 
 // ============ API 配置 ============
 

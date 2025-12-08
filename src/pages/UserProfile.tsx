@@ -75,7 +75,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
               userId: userData.userId,
               password: '******', // 不显示密码
               nickname: userData.nickname || userData.name,
-              avatar: userData.avatar,
+              avatar: userData.avatar || DEFAULT_AVATAR_URL,
               signature: userData.signature || '这个人很懒，什么都没有留下~',
               onlineStatus: userData.onlineStatus || (userData.status as 'online' | 'away' | 'busy' | 'offline') || 'offline',
               accountStatus: userData.accountStatus || 'active',
@@ -227,9 +227,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
               <div className="relative w-48 h-48 mx-auto mb-6">
                 {(!isEditing || !isSelf) && (
                   <img
-                    src={profile.avatar}
+                    src={profile.avatar || DEFAULT_AVATAR_URL}
                     alt="Avatar"
-                    className="w-full h-full rounded-full object-cover border-4 border-gray-700"
+                    className="w-full h-full rounded-full bg-gray-700 object-cover border-4 border-gray-500"
                   />
                 )}
                 {isEditing && isSelf && (

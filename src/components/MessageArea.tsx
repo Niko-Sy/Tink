@@ -11,6 +11,7 @@ import { MenuItems, createDivider } from '../utils/menuItems';
 import type { MenuItemType } from './ContextMenu';
 import { memberService } from '../services/member';
 import MuteMemberModal from './MuteMemberModal';
+import { DEFAULT_AVATAR_URL } from '../config/constants';
 
 interface MessageAreaProps {
   messages: Message[];
@@ -865,7 +866,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
     }
   };
 
-  // 格式化消息时间为 HH:MM
+  // 格式化消息时间 - 智能显示
   const formatMessageTime = (isoTime: string): string => {
     if (!isoTime) return '';
     
@@ -875,9 +876,40 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       if (isNaN(date.getTime())) {
         return isoTime;
       }
+      
+      const now = new Date();
       const hours = date.getHours().toString().padStart(2, '0');
       const minutes = date.getMinutes().toString().padStart(2, '0');
-      return `${hours}:${minutes}`;
+      const timeStr = `${hours}:${minutes}`;
+      
+      // 计算日期差异（忽略具体时间，只看日期）
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const diffTime = today.getTime() - messageDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 0) {
+        // 今天：仅显示时间
+        return timeStr;
+      } else if (diffDays === 1) {
+        // 昨天
+        return `昨天 ${timeStr}`;
+      } else if (diffDays === 2) {
+        // 前天
+        return `前天 ${timeStr}`;
+      } else {
+        // 3天前：显示日期
+        const month = (date.getMonth() + 1).toString().padStart(2, '0');
+        const day = date.getDate().toString().padStart(2, '0');
+        
+        // 如果是今年，显示 MM-DD HH:MM
+        if (date.getFullYear() === now.getFullYear()) {
+          return `${month}-${day} ${timeStr}`;
+        } else {
+          // 如果是往年，显示 YYYY-MM-DD HH:MM
+          return `${date.getFullYear()}-${month}-${day} ${timeStr}`;
+        }
+      }
     } catch (error) {
       return isoTime;
     }
@@ -923,12 +955,12 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         </div>
       )}
       <div className="space-y-4">
-        {messages.map((message) => {
+        {messages.map((message, index) => {
           const isVisible = visibleMessages.has(message.messageId);
           // 获取消息发送者的头像
           const senderAvatar = message.isOwn 
-            ? (user?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg')
-            : (users.find(u => u.userId === message.userId)?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg');
+            ? (user?.avatar || DEFAULT_AVATAR_URL)
+            : (users.find(u => u.userId === message.userId)?.avatar || DEFAULT_AVATAR_URL);
           
           // 查找被引用的消息
           const quotedMessage = message.quotedMessageId 
@@ -937,15 +969,37 @@ const MessageArea: React.FC<MessageAreaProps> = ({
           
           // 系统通知消息特殊处理
           if (message.type === 'system_notification') {
+            // 判断是否显示时间：检查前一条系统消息
+            let showTime = true;
+            if (index > 0) {
+              const prevMessage = messages[index - 1];
+              if (prevMessage.type === 'system_notification') {
+                // 计算时间差
+                const currentTime = new Date(message.time).getTime();
+                const prevTime = new Date(prevMessage.time).getTime();
+                const timeDiff = Math.abs(currentTime - prevTime) / 1000 / 60; // 分钟
+                
+                // 如果两条系统消息间隔小于2分钟，不显示当前消息的时间
+                if (timeDiff < 2) {
+                  showTime = false;
+                }
+              }
+            }
+            
             return (
               <div
                 key={message.messageId}
                 data-message-id={message.messageId}
-                className={`flex justify-center ${
+                className={`flex flex-col items-center ${
                   isVisible ? 'animate-fade-in' : 'opacity-0'
                 }`}
                 style={isVisible ? { animationDelay: '0s' } : undefined}
               >
+                {showTime && (
+                  <div className="text-xs text-gray-600 mb-1">
+                    {formatMessageTime(message.time)}
+                  </div>
+                )}
                 <div className="px-3 py-1 rounded-full bg-gray-800/50 text-gray-400 text-xs">
                   {message.text}
                 </div>
@@ -978,14 +1032,33 @@ const MessageArea: React.FC<MessageAreaProps> = ({
                 />
               </div>
             )}
-            <div className="max-w-xs md:max-w-md">
+            <div className={`flex flex-col ${message.isOwn ? 'items-end' : 'items-start'} max-w-xs md:max-w-md`}>
               {!message.isOwn && (
-                <div className="text-xs text-gray-500 mb-1">
-                  {message.userName || '匿名用户'} {formatMessageTime(message.time)}
+                <div className="text-xs text-gray-500 mb-1 whitespace-nowrap flex items-center gap-1">
+                  <span>{message.userName || '匿名用户'}</span>
+                  {(() => {
+                    const sender = users.find(u => u.userId === message.userId);
+                    if (sender?.roomRole === 'owner') {
+                      return (
+                        <span className="text-xs px-1  rounded bg-yellow-600/40 text-yellow-400  ">
+                          群主
+                        </span>
+                      );
+                    }
+                    if (sender?.roomRole === 'admin') {
+                      return (
+                        <span className="text-xs px-1  rounded bg-blue-600/40 text-blue-400  ">
+                          管理员
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <span>{formatMessageTime(message.time)}</span>
                 </div>
               )}
               <div
-                className={`px-4 py-2 rounded-2xl cursor-default  ${
+                className={`px-4 py-2 rounded-2xl cursor-default inline-block ${
                   message.isOwn
                     ? 'bg-gray-700 text-white rounded-tr-none'
                     : 'bg-gray-800 text-gray-300 rounded-tl-none'

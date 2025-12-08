@@ -6,6 +6,7 @@
 import { useState, useCallback } from 'react';
 import type { User, ChatRoomMember } from '../types';
 import { memberService } from '../services';
+import { DEFAULT_AVATAR_URL } from '../config/constants';
 
 export interface UseRoomMembersReturn {
   users: User[];
@@ -65,7 +66,7 @@ export const useRoomMembers = ({
           userId: member.userId,
           name: member.nickname || member.name || member.username,
           status: (member.status || member.onlineStatus || 'offline') as 'online' | 'away' | 'busy' | 'offline',
-          avatar: member.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
+          avatar: member.avatar || DEFAULT_AVATAR_URL,
           // 保存成员信息用于权限判断
           ...(member.memberInfo && {
             roomRole: member.memberInfo.roomRole,
