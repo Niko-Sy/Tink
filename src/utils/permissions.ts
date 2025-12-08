@@ -37,7 +37,8 @@ export interface PermissionChecker {
   canDeleteMessage: (
     user: User | null,
     member: ChatRoomMember | null,
-    message: Message
+    message: Message,
+    targetMember?: { roomRole?: 'owner' | 'admin' | 'member' }
   ) => boolean;
 
   /**
@@ -45,7 +46,8 @@ export interface PermissionChecker {
    */
   canMuteMember: (
     user: User | null,
-    member: ChatRoomMember | null
+    member: ChatRoomMember | null,
+    targetMember?: { roomRole?: 'owner' | 'admin' | 'member' }
   ) => boolean;
 
   /**
@@ -53,7 +55,8 @@ export interface PermissionChecker {
    */
   canRemoveMember: (
     user: User | null,
-    member: ChatRoomMember | null
+    member: ChatRoomMember | null,
+    targetMember?: { roomRole?: 'owner' | 'admin' | 'member' }
   ) => boolean;
 
   /**
@@ -69,7 +72,8 @@ export interface PermissionChecker {
    */
   canSetAdmin: (
     user: User | null,
-    member: ChatRoomMember | null
+    member: ChatRoomMember | null,
+    targetMember?: { roomRole?: 'owner' | 'admin' | 'member' }
   ) => boolean;
 
   /**
@@ -193,8 +197,14 @@ export const permissionChecker: PermissionChecker = {
 
   /**
    * 检查用户是否可以删除消息
+   * @param targetMember 目标消息发送者的成员信息（可选），用于检查是否可以删除该成员的消息
    */
-  canDeleteMessage: (user, member, message) => {
+  canDeleteMessage: (
+    user: User | null,
+    member: ChatRoomMember | null,
+    message: Message,
+    targetMember?: { roomRole?: 'owner' | 'admin' | 'member' }
+  ) => {
     // 用户未登录，不能删除消息
     if (!user) {
       return false;
@@ -215,33 +225,74 @@ export const permissionChecker: PermissionChecker = {
     }
 
     // 删除他人的消息（需要管理员权限）
-    return permissionChecker.hasPermission(
+    const hasDeletePermission = permissionChecker.hasPermission(
       user,
       member,
       Permission.DELETE_ANY_MESSAGE
     );
+
+    if (!hasDeletePermission) {
+      return false;
+    }
+
+    // 如果提供了目标成员信息，管理员不能删除群主的消息
+    if (targetMember && member?.roomRole === 'admin' && targetMember.roomRole === 'owner') {
+      return false;
+    }
+
+    return true;
   },
 
   /**
    * 检查用户是否可以禁言其他成员
+   * @param targetMember 目标成员的信息（可选），用于检查是否可以对该成员执行操作
    */
-  canMuteMember: (user, member) => {
-    return permissionChecker.hasPermission(
+  canMuteMember: (
+    user: User | null,
+    member: ChatRoomMember | null,
+    targetMember?: { roomRole?: 'owner' | 'admin' | 'member' }
+  ) => {
+    // 检查是否有禁言权限
+    if (!permissionChecker.hasPermission(
       user,
       member,
       Permission.MUTE_MEMBER
-    );
+    )) {
+      return false;
+    }
+
+    // 如果提供了目标成员信息，管理员不能禁言群主
+    if (targetMember && member?.roomRole === 'admin' && targetMember.roomRole === 'owner') {
+      return false;
+    }
+
+    return true;
   },
 
   /**
    * 检查用户是否可以踢出成员
+   * @param targetMember 目标成员的信息（可选），用于检查是否可以对该成员执行操作
    */
-  canRemoveMember: (user, member) => {
-    return permissionChecker.hasPermission(
+  canRemoveMember: (
+    user: User | null,
+    member: ChatRoomMember | null,
+    targetMember?: { roomRole?: 'owner' | 'admin' | 'member' }
+  ) => {
+    // 检查是否有踢出权限
+    if (!permissionChecker.hasPermission(
       user,
       member,
       Permission.REMOVE_MEMBER
-    );
+    )) {
+      return false;
+    }
+
+    // 如果提供了目标成员信息，管理员不能踢出群主
+    if (targetMember && member?.roomRole === 'admin' && targetMember.roomRole === 'owner') {
+      return false;
+    }
+
+    return true;
   },
 
   /**
@@ -257,13 +308,28 @@ export const permissionChecker: PermissionChecker = {
 
   /**
    * 检查用户是否可以设置管理员
+   * @param targetMember 目标成员的信息（可选），用于检查是否可以对该成员执行操作
    */
-  canSetAdmin: (user, member) => {
-    return permissionChecker.hasPermission(
+  canSetAdmin: (
+    user: User | null,
+    member: ChatRoomMember | null,
+    targetMember?: { roomRole?: 'owner' | 'admin' | 'member' }
+  ) => {
+    // 检查是否有设置管理员权限
+    if (!permissionChecker.hasPermission(
       user,
       member,
       Permission.SET_ADMIN
-    );
+    )) {
+      return false;
+    }
+
+    // 如果提供了目标成员信息且目标是群主，不允许操作（群主已经是最高权限）
+    if (targetMember && targetMember.roomRole === 'owner') {
+      return false;
+    }
+
+    return true;
   },
 
   /**

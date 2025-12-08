@@ -8,6 +8,7 @@ import {
   wsClient
 } from '../services';
 import type { ApiError } from '../services';
+import { DEFAULT_AVATAR_URL } from '../config/constants';
 import type { LoginRequest, RegisterRequest } from '../services';
 
 // 使用types中的User接口，扩展登录相关字段
@@ -142,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           username: userData.username || '',
           name: userData.name || userData.nickname || userData.username || '',
           status: userData.status || 'online',
-          avatar: userData.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
+          avatar: userData.avatar || DEFAULT_AVATAR_URL,
           token: token,
           nickname: userData.nickname || userData.username,
           phone: userData.phone,
@@ -195,7 +196,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           username: userData.username || '',
           name: userData.name || userData.nickname || userData.username || '',
           status: userData.status || 'online',
-          avatar: userData.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
+          avatar: userData.avatar || DEFAULT_AVATAR_URL,
           token: token,
           nickname: userData.nickname || userData.username,
           phone: userData.phone,

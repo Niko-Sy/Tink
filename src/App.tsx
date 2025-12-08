@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { SendOutlined, SmileOutlined, SettingOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { notification } from 'antd';
+import { HOME_ROOM_ID } from './config/constants';
+import logger from './utils/logger';
 import MessageArea from './components/MessageArea';
 import UserListPanel from './components/UserListPanel';
 import Sidebar from './components/Sidebar';
@@ -142,6 +144,9 @@ const App: React.FC = () => {
   const [replyingToMessageId, setReplyingToMessageId] = useState<string | null>(null);
   const [showDebugPanel, setShowDebugPanel] = useState(true);
   
+  // 速率限制状态
+  const [messageTimes, setMessageTimes] = useState<number[]>([]);
+  
   // 禁用全局右键菜单
   useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => {
@@ -155,16 +160,16 @@ const App: React.FC = () => {
 
   // WebSocket 连接管理
   useEffect(() => {
-    console.log('[App] WebSocket 连接管理 useEffect', { user: user?.userId, isConnected: wsClient.isConnected });
+    logger.log('[App] WebSocket 连接管理 useEffect', { user: user?.userId, isConnected: wsClient.isConnected });
     if (user && !wsClient.isConnected) {
-      console.log('[App] 用户已登录，建立 WebSocket 连接');
+      logger.log('[App] 用户已登录，建立 WebSocket 连接');
       wsClient.connect();
     }
 
     return () => {
       // 组件卸载时断开连接
       if (wsClient.isConnected) {
-        console.log('[App] 组件卸载，断开 WebSocket 连接');
+        logger.log('[App] 组件卸载，断开 WebSocket 连接');
         wsClient.disconnect();
       }
     };
@@ -172,8 +177,8 @@ const App: React.FC = () => {
 
   // 切换聊天室时获取成员信息和消息
   useEffect(() => {
-    if (activeChatRoom !== '100000001') {
-      console.log('[App] 切换到聊天室:', activeChatRoom);
+    if (activeChatRoom !== HOME_ROOM_ID) {
+      logger.log('[App] 切换到聊天室:', activeChatRoom);
       fetchRoomMembers(activeChatRoom);
       fetchCurrentMemberInfo(activeChatRoom);
       // 每次切换房间时强制刷新消息历史
@@ -185,32 +190,59 @@ const App: React.FC = () => {
   
   // 发送消息（添加权限检查）
   const handleSend = async () => {
-    console.log('[App] handleSend 被调用', { inputValue, user: user?.userId, activeChatRoom });
+    logger.log('[App] handleSend 被调用', { inputValue, user: user?.userId, activeChatRoom });
     
     if (inputValue.trim() === '' || !user) {
-      console.log('[App] 发送被阻止: 输入为空或用户未登录');
+      logger.log('[App] 发送被阻止: 输入为空或用户未登录');
       return;
     }
     
     // 权限检查：是否可以发送消息
     if (!permissionChecker.canSendMessage(user, currentRoomMember)) {
       const muteReason = permissionChecker.getMuteReason(user, currentRoomMember);
-      console.log('[App] 发送被阻止: 权限检查失败', muteReason);
+      logger.log('[App] 发送被阻止: 权限检查失败', muteReason);
       showError('无法发送消息', muteReason || '你没有发送消息的权限', 3);
       return;
     }
     
+    // 速率限制检查
+    const now = Date.now();
+    const oneSecondAgo = now - 1000;
+    const oneMinuteAgo = now - 60000;
+    
+    // 清理1分钟之前的记录
+    const recentTimes = messageTimes.filter(time => time > oneMinuteAgo);
+    
+    // 检查1秒内发送次数（最多2次）
+    const lastSecondCount = recentTimes.filter(time => time > oneSecondAgo).length;
+    if (lastSecondCount >= 2) {
+      logger.log('[App] 发送被阻止: 发送过于频繁（1秒内超过2次）');
+      showWarning('您说话太快了', '请稍后再试（1秒内最多发送2条消息）', 2);
+      return;
+    }
+    
+    // 检查1分钟内发送次数（最多60次）
+    if (recentTimes.length >= 60) {
+      logger.log('[App] 发送被阻止: 发送过于频繁（1分钟内超过60次）');
+      showWarning('您说话太快了', '请稍后再试（1分钟内最多发送60条消息）', 2);
+      return;
+    }
+    
     const messageText = inputValue.trim();
-    console.log('[App] 准备发送消息:', { messageText, activeChatRoom, replyingTo: replyingToMessageId });
+    logger.log('[App] 准备发送消息:', { messageText, activeChatRoom, replyingTo: replyingToMessageId });
     setInputValue('');
     setShowEmojiPanel(false);
     
     try {
       await sendMessage(activeChatRoom, messageText, replyingToMessageId || undefined);
-      console.log('[App] 消息发送成功');
+      logger.log('[App] 消息发送成功');
+      
+      // 更新发送时间记录
+      setMessageTimes([...recentTimes, now]);
+      
       setReplyingToMessageId(null); // 发送成功后清除回复状态
     } catch (err) {
-      console.error('[App] 消息发送失败:', err);
+      logger.error('[App] 消息发送失败:', err);
       // 发送失败，恢复输入框内容
       setInputValue(messageText);
     }
@@ -226,7 +258,7 @@ const App: React.FC = () => {
     navigator.clipboard.writeText(roomId).then(() => {
       showSuccess('复制成功', `聊天室ID ${roomId} 已复制到剪贴板`, 2);
     }).catch(err => {
-      console.error('复制失败:', err);
+      logger.error('复制失败:', err);
       showError('复制失败', '请手动复制聊天室ID', 2);
     });
   };
@@ -238,7 +270,7 @@ const App: React.FC = () => {
 
   // 处理邀请好友
   const handleInviteFriend = () => {
-    console.log('邀请好友');
+    logger.log('邀请好友');
     showInfo('邀请好友', '邀请好友功能开发中，敬请期待！', 2);
   };
   
@@ -328,7 +360,7 @@ const App: React.FC = () => {
                 <i className={`${chatRooms.find(room => room.roomId === activeChatRoom)?.icon} mr-3 text-lg`}></i>
                 {chatRooms.find(room => room.roomId === activeChatRoom)?.name}
               </div>
-              {activeChatRoom !== '100000001' && (<div className="flex items-center pt-3 space-x-2 text-sm text-gray-500">
+              {activeChatRoom !== HOME_ROOM_ID && (<div className="flex items-center pt-3 space-x-2 text-sm text-gray-500">
                 <span>ID: {chatRooms.find(room => room.roomId === activeChatRoom)?.roomId}</span>
                 <button
                   className="p-1 hover:bg-gray-800 rounded transition-colors focus:outline-none bg-transparent"
@@ -347,7 +379,7 @@ const App: React.FC = () => {
             
             {/* 右侧操作按钮组 */}
             <div className="flex items-center space-x-2">
-              {activeChatRoom !== '100000001' && permissionChecker.canEditRoomInfo(user, currentRoomMember) && (
+              {activeChatRoom !== HOME_ROOM_ID && permissionChecker.canEditRoomInfo(user, currentRoomMember) && (
                 <button
                   className="p-2 hover:bg-gray-800 rounded-lg transition-colors focus:outline-none bg-transparent text-gray-400 hover:text-white"
                   onClick={() => setShowSettingsModal(true)}
@@ -372,7 +404,7 @@ const App: React.FC = () => {
           {/* 主体内容区 */}
           <div className="flex flex-1 overflow-hidden">
             {/* 根据当前聊天室显示不同内容 */}
-            {activeChatRoom === '100000001' ? (
+            {activeChatRoom === HOME_ROOM_ID ? (
               /* 主页显示 */
               <HomePage
                 onCreateRoom={() => {

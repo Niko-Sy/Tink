@@ -459,8 +459,8 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
     const isAdmin = targetUser.roomRole === 'admin' || targetUser.roomRole === 'owner';
     const isOwner = targetUser.roomRole === 'owner';
     const isMuted = targetUser.isMuted || false;
-    const canManageAdmins = permissionChecker.canSetAdmin(user, currentRoomMember);
-    const canMute = permissionChecker.canMuteMember(user, currentRoomMember);
+    const canManageAdmins = permissionChecker.canSetAdmin(user, currentRoomMember, targetUser);
+    const canMute = permissionChecker.canMuteMember(user, currentRoomMember, targetUser);
     
     const menuItems: MenuItemType[] = [
       MenuItems.privateMessage(() => handleMenuAction('privateMessage', userId)),
@@ -490,7 +490,7 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
     menuItems.push(
       MenuItems.kick(
         () => handleMenuAction('kick', userId),
-        !permissionChecker.canRemoveMember(user, currentRoomMember)
+        !permissionChecker.canRemoveMember(user, currentRoomMember, targetUser)
       )
     );
     
@@ -578,7 +578,7 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
           sortedUsers.map(user => (
             <div 
               key={user.userId} 
-              className="flex items-center mx-2 my-1 px-4 py-2 hover:bg-gray-800 transition-colors cursor-pointer rounded-list"
+              className="flex items-center mx-4 my-1 px-2 py-2 hover:bg-gray-800 transition-colors cursor-pointer rounded-list"
               onClick={(e) => handleUserClick(e, user.userId)}
             >
               <div className="relative mr-3">
@@ -593,7 +593,19 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
                 }`}></div>
               </div>
               <div className="flex-1">
-                <div className="text-gray-300 text-sm">{user.name}</div>
+                <div className="text-gray-300 text-sm flex items-center gap-1">
+                  <span>{user.name}</span>
+                  {user.roomRole === 'owner' && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-600/20 text-yellow-400 border border-yellow-600/30">
+                      群主
+                    </span>
+                  )}
+                  {user.roomRole === 'admin' && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-blue-600/20 text-blue-400 border border-blue-600/30">
+                      管理员
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-gray-500">
                   {user.status === 'online' ? '在线' : 
                    user.status === 'away' ? '离开' : '离线'}

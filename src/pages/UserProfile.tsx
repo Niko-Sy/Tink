@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { notification, Spin } from 'antd';
 import { useAuth } from '../context/AuthContext';
 import { userService } from '../services/user';
+import { DEFAULT_AVATAR_URL } from '../config/constants';
 import {
   ArrowLeftOutlined,
   EditOutlined,
@@ -49,9 +50,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
     userId: urlUserId || 'U' + Math.random().toString().slice(2, 11),
     password: '******',
     nickname: isSelf ? (user?.username || '张伟') : '李娜',
-    avatar: isSelf 
-      ? 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg'
-      : 'https://ai-public.mastergo.com/ai/img_res/945a373ac8cba538922e3056a3952a11.jpg',
+    avatar: DEFAULT_AVATAR_URL,
     signature: isSelf ? '这个人很懒，什么都没有留下~' : '热爱生活，享受每一天！',
     onlineStatus: 'online',
     accountStatus: 'active',
@@ -219,7 +218,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ viewMode = 'self' }) 
       </div>
 
       {/* 主体内容 */}
-      <div className="max-w-6xl mx-auto py-8 px-6">
+      <div className="max-w-6xl mx-auto py-8 px-6 h-[calc(100vh-88px)] overflow-y-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 左侧 - 头像和基本信息 */}
           <div className="lg:col-span-1">

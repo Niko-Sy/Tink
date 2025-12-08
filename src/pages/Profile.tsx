@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { DEFAULT_AVATAR_URL } from '../config/constants';
 import { 
   ArrowLeftOutlined, 
   EditOutlined, 
@@ -53,7 +54,7 @@ const Profile: React.FC = () => {
     nickname: user?.nickname || user?.username || '',
     phone: user?.phone || '',
     email: user?.email || '',
-    avatar: user?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
+    avatar: user?.avatar || DEFAULT_AVATAR_URL,
     signature: user?.signature || '这个人很懒，什么都没有留下~',
     onlineStatus: user?.onlineStatus || 'online',
     accountStatus: user?.accountStatus || 'active',
@@ -80,7 +81,7 @@ const Profile: React.FC = () => {
         nickname: user.nickname || user.username || '',
         phone: user.phone || '',
         email: user.email || '',
-        avatar: user.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
+        avatar: user.avatar || DEFAULT_AVATAR_URL,
         signature: user.signature || '这个人很懒，什么都没有留下~',
         onlineStatus: user.onlineStatus || 'online',
         accountStatus: user.accountStatus || 'active',
@@ -106,7 +107,7 @@ const Profile: React.FC = () => {
             nickname: userData.nickname || userData.username || '',
             phone: userData.phone || '',
             email: userData.email || '',
-            avatar: userData.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg',
+            avatar: userData.avatar || DEFAULT_AVATAR_URL,
             signature: userData.signature || '这个人很懒，什么都没有留下~',
             onlineStatus: userData.onlineStatus || 'online',
             accountStatus: userData.accountStatus || 'active',
@@ -392,7 +393,7 @@ const Profile: React.FC = () => {
       </div>
 
       {/* 主体内容 */}
-      <div className="max-w-6xl mx-auto py-8 px-6">
+      <div className="max-w-6xl mx-auto py-8 px-6 h-[calc(100vh-88px)] overflow-y-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 左侧 - 头像和基本信息 */}
           <div className="lg:col-span-1">

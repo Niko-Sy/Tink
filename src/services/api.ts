@@ -8,24 +8,14 @@
 
 import axios from 'axios';
 import type { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { API_BASE_URL, WEBSOCKET_URL, API_TIMEOUT } from '../config/constants';
+import logger from '../utils/logger';
 
-// API 基础配置
-const API_CONFIG = {
-  // 开发环境
-  development: {
-    baseURL: 'http://120.27.227.190:8080/api/v1',
-    wsURL: 'ws://120.27.227.190:8080/ws',
-  },
-  // 生产环境
-  production: {
-    baseURL: 'http://120.27.227.190:8080/api/v1',
-    wsURL: 'ws://120.27.227.190:8080/ws',
-  },
+// API 基础配置（使用常量文件中的配置）
+export const config = {
+  baseURL: API_BASE_URL,
+  wsURL: WEBSOCKET_URL,
 };
-
-// 获取当前环境配置
-const env = import.meta.env.MODE === 'production' ? 'production' : 'development';
-export const config = API_CONFIG[env];
 
 // 通用响应格式
 export interface ApiResponse<T = unknown> {
@@ -107,11 +97,13 @@ export const tokenManager = {
 const createApiInstance = (): AxiosInstance => {
   const instance = axios.create({
     baseURL: config.baseURL,
-    timeout: 15000,
+    timeout: API_TIMEOUT,
     headers: {
       'Content-Type': 'application/json',
     },
   });
+
+  logger.info('[API] Axios 实例已创建', { baseURL: config.baseURL, timeout: API_TIMEOUT });
 
   // 请求拦截器 - 添加 Token
   instance.interceptors.request.use(
@@ -165,13 +157,15 @@ const createApiInstance = (): AxiosInstance => {
         } catch (refreshError) {
           // 刷新失败，清除 Token 并跳转登录
           tokenManager.clearAll();
-          window.location.href = '/login';
+          // 使用 replace 避免用户通过浏览器后退按钮返回
+          window.location.replace('/login');
           return Promise.reject(refreshError);
         }
 
         // 无 refreshToken，清除并跳转
         tokenManager.clearAll();
-        window.location.href = '/login';
+        // 使用 replace 避免用户通过浏览器后退按钮返回
+        window.location.replace('/login');
       }
 
       // 构造统一错误对象

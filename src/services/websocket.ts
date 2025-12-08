@@ -7,6 +7,12 @@
  */
 
 import { config, tokenManager } from './api';
+import { 
+  WEBSOCKET_RECONNECT_DELAY, 
+  WEBSOCKET_MAX_RECONNECT_ATTEMPTS, 
+  WEBSOCKET_HEARTBEAT_INTERVAL 
+} from '../config/constants';
+import logger from '../utils/logger';
 
 // ==================== 消息类型定义 ====================
 
@@ -147,9 +153,9 @@ export class WebSocketClient {
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 3000;  // 初始重连延迟 3s
-  private heartbeatDelay = 30000; // 心跳间隔 30s
+  private maxReconnectAttempts = WEBSOCKET_MAX_RECONNECT_ATTEMPTS;
+  private reconnectDelay = WEBSOCKET_RECONNECT_DELAY;
+  private heartbeatDelay = WEBSOCKET_HEARTBEAT_INTERVAL;
   private isManualClose = false;
   
   // 事件监听器
@@ -167,13 +173,13 @@ export class WebSocketClient {
    */
   connect(token?: string): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log('[WebSocket] 已连接，忽略重复连接');
+      logger.log('[WebSocket] 已连接，忽略重复连接');
       return;
     }
     
     const authToken = token || tokenManager.getToken();
     if (!authToken) {
-      console.error('[WebSocket] 无 Token，无法连接');
+      logger.error('[WebSocket] 无 Token，无法连接');
       this.emit('error', { message: '未登录，无法建立连接' });
       return;
     }
@@ -181,13 +187,13 @@ export class WebSocketClient {
     this.isManualClose = false;
     const wsUrl = `${config.wsURL}?token=${authToken}`;
     
-    console.log('[WebSocket] 正在连接...', wsUrl.replace(authToken, '***'));
+    logger.log('[WebSocket] 正在连接...', wsUrl.replace(authToken, '***'));
     
     try {
       this.ws = new WebSocket(wsUrl);
       this.setupEventListeners();
     } catch (error) {
-      console.error('[WebSocket] 连接创建失败:', error);
+      logger.error('[WebSocket] 连接创建失败:', error);
       this.scheduleReconnect();
     }
   }
@@ -199,16 +205,16 @@ export class WebSocketClient {
     if (!this.ws) return;
     
     this.ws.onopen = () => {
-      console.log('[WebSocket] 连接成功');
+      logger.log('[WebSocket] 连接成功');
       this._isConnected = true;
       this.reconnectAttempts = 0;
-      this.reconnectDelay = 3000;
+      this.reconnectDelay = WEBSOCKET_RECONNECT_DELAY;
       this.startHeartbeat();
       this.emit('connected', null);
     };
     
     this.ws.onclose = (event) => {
-      console.log('[WebSocket] 连接关闭:', event.code, event.reason);
+      logger.log('[WebSocket] 连接关闭:', event.code, event.reason);
       this._isConnected = false;
       this.stopHeartbeat();
       this.emit('disconnected', { code: event.code, reason: event.reason });
@@ -219,12 +225,12 @@ export class WebSocketClient {
     };
     
     this.ws.onerror = (error) => {
-      console.error('[WebSocket] 连接错误:', error);
+      logger.error('[WebSocket] 连接错误:', error);
       this.emit('error', { message: '连接发生错误' });
     };
     
     this.ws.onmessage = (event) => {
-      console.log('[WebSocket] onmessage 收到原始数据:', event.data);
+      logger.log('[WebSocket] onmessage 收到原始数据:', event.data);
       this.handleMessage(event.data);
     };
   }
@@ -241,7 +247,7 @@ export class WebSocketClient {
         return;
       }
       
-      console.log('[WebSocket] 收到消息类型:', message.type, '数据:', message);
+      logger.log('[WebSocket] 收到消息类型:', message.type, '数据:', message);
       
       // 触发对应类型的事件
       this.emit(message.type, message);
@@ -253,7 +259,7 @@ export class WebSocketClient {
       }
       
     } catch (error) {
-      console.error('[WebSocket] 消息解析失败:', error, '原始数据:', data);
+      logger.error('[WebSocket] 消息解析失败:', error, '原始数据:', data);
     }
   }
   
@@ -262,7 +268,7 @@ export class WebSocketClient {
    */
   send(message: WSSendMessage): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.warn('[WebSocket] 连接未就绪，无法发送消息');
+      logger.warn('[WebSocket] 连接未就绪，无法发送消息');
       return false;
     }
     
@@ -270,7 +276,7 @@ export class WebSocketClient {
       this.ws.send(JSON.stringify(message));
       return true;
     } catch (error) {
-      console.error('[WebSocket] 发送消息失败:', error);
+      logger.error('[WebSocket] 发送消息失败:', error);
       return false;
     }
   }
@@ -284,7 +290,7 @@ export class WebSocketClient {
     messageType: 'text' | 'image' | 'file' = 'text',
     replyTo?: string
   ): boolean {
-    console.log('[WebSocketClient] 发送聊天消息:', { roomId, text, messageType, replyTo });
+    logger.log('[WebSocketClient] 发送聊天消息:', { roomId, text, messageType, replyTo });
     const message: WSSendMessage = {
       type: 'message',
       action: 'send',  // 根据文档，必须包含 action 字段
@@ -295,9 +301,9 @@ export class WebSocketClient {
         ...(replyTo && { quotedMessageId: replyTo }),  // 使用 quotedMessageId 而不是 replyTo
       },
     };
-    console.log('[WebSocketClient] 发送消息结构:', message);
+    logger.log('[WebSocketClient] 发送消息结构:', message);
     const result = this.send(message);
-    console.log('[WebSocketClient] 消息发送结果:', result);
+    logger.log('[WebSocketClient] 消息发送结果:', result);
     return result;
   }
   
@@ -326,7 +332,7 @@ export class WebSocketClient {
    */
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('[WebSocket] 达到最大重连次数，停止重连');
+      logger.log('[WebSocket] 达到最大重连次数，停止重连');
       this.emit('reconnect_failed', null);
       return;
     }
@@ -338,7 +344,7 @@ export class WebSocketClient {
     this.reconnectAttempts++;
     const delay = Math.min(this.reconnectDelay * this.reconnectAttempts, 30000);
     
-    console.log(`[WebSocket] ${delay / 1000}秒后尝试第 ${this.reconnectAttempts} 次重连...`);
+    logger.log(`[WebSocket] ${delay / 1000}秒后尝试第 ${this.reconnectAttempts} 次重连...`);
     
     this.emit('reconnecting', { attempt: this.reconnectAttempts, delay });
     
@@ -351,7 +357,7 @@ export class WebSocketClient {
    * 断开连接
    */
   disconnect(): void {
-    console.log('[WebSocket] 主动断开连接');
+    logger.log('[WebSocket] 主动断开连接');
     this.isManualClose = true;
     this.stopHeartbeat();
     
@@ -378,7 +384,7 @@ export class WebSocketClient {
     this.eventHandlers.get(event)!.add(handler as WSEventHandler);
     // 只在首次注册时打印日志
     if (this.eventHandlers.get(event)!.size === 1) {
-      console.log('[WebSocket] 注册事件处理器:', event);
+      logger.log('[WebSocket] 注册事件处理器:', event);
     }
   }
   
@@ -398,17 +404,17 @@ export class WebSocketClient {
   private emit(event: string, data: unknown): void {
     const handlers = this.eventHandlers.get(event);
     if (event !== 'pong' && event !== 'ping') {
-      console.log('[WebSocket] emit 事件:', event, '处理器数量:', handlers?.size || 0);
+      logger.log('[WebSocket] emit 事件:', event, '处理器数量:', handlers?.size || 0);
     }
     if (handlers) {
       handlers.forEach((handler) => {
         try {
           if (event !== 'pong' && event !== 'ping') {
-            console.log('[WebSocket] 执行事件处理器:', event);
+            logger.log('[WebSocket] 执行事件处理器:', event);
           }
           handler(data);
         } catch (error) {
-          console.error(`[WebSocket] 事件处理器错误 [${event}]:`, error);
+          logger.error(`[WebSocket] 事件处理器错误 [${event}]:`, error);
         }
       });
     }

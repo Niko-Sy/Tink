@@ -189,7 +189,7 @@ const AddChatRoomModal: React.FC<AddChatRoomModalProps> = ({
           <h2 className="text-xl font-bold text-white">添加聊天室</h2>
           <button
             onClick={handleClose}
-            className="p-2 hover:bg-gray-700 rounded-lg transition-colors focus:outline-none text-gray-400 hover:text-white"
+            className="p-2 hover:bg-gray-700 bg-transparent rounded-lg transition-colors focus:outline-none text-gray-400 hover:text-white"
           >
             <CloseOutlined className="text-lg" />
           </button>

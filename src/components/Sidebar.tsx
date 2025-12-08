@@ -3,6 +3,7 @@ import { PlusOutlined } from '@ant-design/icons';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import type { User, ChatRoom } from '../types';
+import { DEFAULT_AVATAR_URL } from '../config/constants';
 import logo from '../assets/Tink_white.svg';
 import { useContextMenu } from '../hooks/useContextMenu';
 import ContextMenu from './ContextMenu';
@@ -182,7 +183,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 onClick={(e) => handleContextMenu(e, {})}
               >
                 <img 
-                  src={user?.avatar || users.find(u => u.userId === 'U123456789')?.avatar || 'https://ai-public.mastergo.com/ai/img_res/3b71fa6479b687f7aac043084415c2d8.jpg'} 
+                  src={user?.avatar || users.find(u => u.userId === 'U123456789')?.avatar || DEFAULT_AVATAR_URL} 
                   alt="User Avatar" 
                   className="w-full h-full object-cover"
                 />
