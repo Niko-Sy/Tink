@@ -223,7 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
               <button
                 onClick={toggleRoomListCollapse}
-                className={` p-1 hover:bg-gray-800  rounded transition-colors flex-shrink-0 bg-transparent border-0 focus:outline-none ${isRoomListCollapsed ? 'mr-4' : 'ml-auto mr-1'} focus:text-white`}
+                className={` p-1 hover:bg-gray-800  rounded-lg transition-colors flex-shrink-0 bg-transparent border-0 focus:outline-none ${isRoomListCollapsed ? 'mr-4' : 'ml-auto mr-1'} focus:text-white`}
                 title={isRoomListCollapsed ? "展开" : "收起"}
               >
                 <svg 
@@ -242,7 +242,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             {!isRoomListCollapsed && showText && (
               <div className="flex items-center text-xs text-gray-400 pl-0.5">
                 <span className="truncate mr-2">
-                  ID: {user?.userId || 'U123456789'}
+                  UID: {user?.userId || 'U123456789'}
                 </span>
                 <button
                   onClick={handleCopyUserId}
