@@ -109,9 +109,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen border-r border-grayborder">
+    <div className="flex flex-col h-screen border-none border-grayborder ">
       {/* 品牌标识 - 横跨两列 */}
-      <div className={`flex items-center pl-8 pr-5 pb-1 pt-3 bg-ground  border-gray-800 transition-all duration-300 ${
+      <div className={`flex items-center pl-8 pr-5 pb-1 pt-3 bg-sidebar  border-gray-800 transition-all duration-300 ${
         isRoomListCollapsed ? 'w-auto' : ''
       }`}>
         <div className="w-16 h-16 bg-transparent rounded-btn flex items-center justify-center mr-3">
@@ -133,7 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* 下方两列区域 */}
       <div className="flex flex-1 overflow-hidden">
         {/* 左侧列 - 用户头像和图标 */}
-        <div className="w-16 bg-ground flex flex-col items-center  border-gray-800">
+        <div className="w-16 bg-sidebar flex flex-col items-center  border-gray-800">
           
           
           
@@ -209,11 +209,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
         
         {/* 右侧列 - 聊天室列表 */}
-        <div className={`bg-ground flex flex-col transition-all duration-300 ${
+        <div className={`bg-sidebar flex flex-col transition-all duration-300 ${
           isRoomListCollapsed ? 'w-16' : 'w-52'
         }`}>
           {/* 用户信息区域 - 固定在顶部 */}
-          <div className="h-16 bg-ground border-0 border-gray-700 pt-3 pl-6 pr-2">
+          <div className="h-16 bg-sidebar border-0 border-gray-700 pt-3 pl-6 pr-2">
             <div className={`flex items-center  ${isRoomListCollapsed ? 'justify-center' : 'justify-between'}`}>
               {!isRoomListCollapsed && showText && (
                 <div className="flex-1 min-w-0 mr-2">
@@ -227,7 +227,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
               <button
                 onClick={toggleRoomListCollapse}
-                className={` p-1 hover:bg-gray-800 rounded transition-colors flex-shrink-0 bg-transparent border-0 focus:outline-none ${isRoomListCollapsed ? 'mr-4' : 'ml-auto mr-1'} focus:text-white`}
+                className={` p-1 hover:bg-gray-800  rounded transition-colors flex-shrink-0 bg-transparent border-0 focus:outline-none ${isRoomListCollapsed ? 'mr-4' : 'ml-auto mr-1'} focus:text-white`}
                 title={isRoomListCollapsed ? "展开" : "收起"}
               >
                 <svg 
@@ -250,7 +250,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </span>
                 <button
                   onClick={handleCopyUserId}
-                  className="p-1 hover:bg-gray-700 rounded transition-colors flex-shrink-0 bg-transparent border-0 focus:outline-none"
+                  className="p-1 hover:text-gray-300 rounded transition-colors flex-shrink-0 bg-transparent border-0 focus:outline-none"
                   title="复制ID"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -268,7 +268,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               chatRooms.map(room => (
                 <div
                   key={room.roomId}
-                  className={` flex items-center px-3 py-3 mx-2.5 my-1.5 cursor-pointer transition-colors rounded-list ${
+                  className={` flex items-center px-3 py-3 mx-2 my-2 cursor-pointer transition-colors rounded-list ${
                     activeChatRoom === room.roomId
                       ? 'bg-gray-700 text-white'
                       : 'hover:bg-gray-800 text-gray-400'
@@ -329,7 +329,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* 添加按钮 */}
           <div className={`py-4 px-3 border-gray-800 mb-2 `}>
             <button
-              className={`w-full h-10 flex items-center justify-center py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-btn transition-colors focus:outline-none ${
+              className={`w-full h-10 flex items-center justify-center py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white/80 rounded-btn transition-colors focus:outline-none ${
                 isRoomListCollapsed ? 'px-0' : ''
               }`}
               onClick={onAddChatRoom}

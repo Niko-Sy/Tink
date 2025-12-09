@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { SendOutlined, SmileOutlined, SettingOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { SettingOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
 import { notification } from 'antd';
 import { HOME_ROOM_ID } from './config/constants';
 import logger from './utils/logger';
@@ -10,6 +10,7 @@ import Sidebar from './components/Sidebar';
 import AddChatRoomModal from './components/AddChatRoomModal';
 import ChatRoomSettingsModal from './components/ChatRoomSettingsModal';
 import HomePage from './components/HomePage';
+import MessageInput from './components/MessageInput';
 import { useAuth } from './context/AuthContext';
 import { permissionChecker } from './utils/permissions';
 import { useChatRooms } from './hooks/useChatRooms';
@@ -137,7 +138,6 @@ const App: React.FC = () => {
   
   // UI 状态
   const [inputValue, setInputValue] = useState('');
-  const [showEmojiPanel, setShowEmojiPanel] = useState(false);
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showUserPanel, setShowUserPanel] = useState(true);
@@ -231,7 +231,6 @@ const App: React.FC = () => {
     const messageText = inputValue.trim();
     logger.log('[App] 准备发送消息:', { messageText, activeChatRoom, replyingTo: replyingToMessageId });
     setInputValue('');
-    setShowEmojiPanel(false);
     
     try {
       await sendMessage(activeChatRoom, messageText, replyingToMessageId || undefined);
@@ -246,11 +245,6 @@ const App: React.FC = () => {
       // 发送失败，恢复输入框内容
       setInputValue(messageText);
     }
-  };
-  
-  // 添加表情到输入框
-  const addEmoji = (emoji: string) => {
-    setInputValue(prev => prev + emoji);
   };
   
   // 复制聊天室ID
@@ -293,25 +287,6 @@ const App: React.FC = () => {
     setShowSettingsModal(false);
   };
 
-  // 表情数据
-  const emojis = [
-    '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙃', '😉', '😊',
-    '😇', '🥰', '🤩', '😘', '😗', '😚', '😙', '😋', '😛', '😜', '🤪',
-    '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏',
-    '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '🤒', '🤕',
-    '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓',
-    '🧐', '😕', '😟', '🙁', '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧',
-    '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣', '😞', '😓', '😩', '😫',
-    '🥱', '😤', '😡', '😠', '🤬', '👍', '👏', '🙌', '👐', '🤲', '🤝',
-    '🙏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '👋',
-    '🤚', '🖐', '✋', '🖖', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃',
-    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕',
-    '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉', '☸️',
-    '✨', '⭐', '🌟', '⚡', '💥', '💦', '💨', '🌈', '☀️', '⛅',
-    '🎉', '🎊', '🎈', '🎁', '🏆', '🥇', '🥈', '🥉', '🏀', '🏈',
-    '💯', '💢', '💬', '💭', '🗯', '💤', '💮', '♨️', '💈', '🛑', '⚠️', '🚸'
-  ];
-  
   return (
     <div className="flex h-screen w-screen bg-ground text-white">
       {contextHolder}
@@ -363,7 +338,7 @@ const App: React.FC = () => {
               {activeChatRoom !== HOME_ROOM_ID && (<div className="flex items-center pt-3 space-x-2 text-sm text-gray-500">
                 <span>ID: {chatRooms.find(room => room.roomId === activeChatRoom)?.roomId}</span>
                 <button
-                  className="p-1 hover:bg-gray-800 rounded transition-colors focus:outline-none bg-transparent"
+                  className="p-1 hover:text-gray-300 rounded transition-colors focus:outline-none bg-transparent"
                   onClick={() => {
                     const roomId = chatRooms.find(room => room.roomId === activeChatRoom)?.roomId;
                     if (roomId) copyRoomId(roomId);
@@ -381,14 +356,14 @@ const App: React.FC = () => {
             <div className="flex items-center space-x-2">
               {activeChatRoom !== HOME_ROOM_ID && permissionChecker.canEditRoomInfo(user, currentRoomMember) && (
                 <button
-                  className="p-2 hover:bg-gray-800 rounded-lg transition-colors focus:outline-none bg-transparent text-gray-400 hover:text-white"
+                  className="p-1 hover:bg-gray-800 rounded-lg transition-colors focus:outline-none bg-transparent text-gray-400 hover:text-white"
                   onClick={() => setShowSettingsModal(true)}
                   title="聊天室设置"
                 >
                   <SettingOutlined className="text-lg" />
               </button>)}
               <button
-                className="p-2 hover:bg-gray-800 rounded-lg transition-colors focus:outline-none bg-transparent text-gray-400 hover:text-white"
+                className="p-1 hover:bg-gray-800 rounded-lg transition-colors focus:outline-none bg-transparent text-gray-400 hover:text-white"
                 onClick={() => setShowUserPanel(!showUserPanel)}
                 title={showUserPanel ? '收起用户列表' : '展开用户列表'}
               >
@@ -432,6 +407,11 @@ const App: React.FC = () => {
                     // 聚焦到输入框
                     document.querySelector<HTMLInputElement>('input[type="text"]')?.focus();
                   }}
+                  onMentionUser={(userName) => {
+                    setInputValue(`@${userName} `);
+                    // 聚焦到输入框
+                    document.querySelector<HTMLInputElement>('input[type="text"]')?.focus();
+                  }}
                   onRemoveUser={removeUser}
                   onUpdateUserRole={updateUserRole}
                   onLoadMoreMessages={fetchMoreMessages}
@@ -439,96 +419,18 @@ const App: React.FC = () => {
                   hasMore={hasMoreMessages[activeChatRoom] ?? true}
                 />
               {/* 输入控制区 */}
-              <div className=" border-gray-800 bg-ground p-4">
-                {/* 禁言提示 */}
-                {!permissionChecker.canSendMessage(user, currentRoomMember) && (
-                  <div className="mb-3 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    {permissionChecker.getMuteReason(user, currentRoomMember) || '你没有发送消息的权限'}
-                  </div>
-                )}
-
-                {/* 回复消息提示 */}
-                {replyingToMessageId && (
-                  <div className="mb-3 p-3 bg-gray-800 rounded-lg flex items-center justify-between">
-                    <div className="flex items-center space-x-2 text-sm text-gray-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                      </svg>
-                      <span>回复: {messages.find(m => m.messageId === replyingToMessageId)?.text.slice(0, 30) || '消息'}</span>
-                    </div>
-                    <button
-                      className="text-gray-500 hover:text-gray-300 transition-colors focus:outline-none bg-transparent"
-                      onClick={() => setReplyingToMessageId(null)}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-
-                {/* 表情面板 */}
-                {showEmojiPanel && (
-                  <div className="mb-3 p-3 bg-gray-800 rounded-lg">
-                    <div className="h-24 overflow-y-auto">
-                      <div className="grid grid-cols-12 gap-2">
-                        {emojis.map((emoji, index) => (
-                          <button
-                            key={index}
-                            className="text-2xl p-1 hover:bg-gray-700 rounded transition-colors bg-transparent focus:outline-none"
-                            onClick={() => addEmoji(emoji)}
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {/* 输入框和按钮 */}
-                <div className="flex items-center space-x-2">
-                  <button
-                    className="p-2 text-gray-500 hover:text-gray-300 bg-transparent transition-colors border-0 focus:outline-none"
-                    onClick={() => setShowEmojiPanel(!showEmojiPanel)}
-                  >
-                    <SmileOutlined className="text-xl" />
-                  </button>
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={inputValue}
-                      onChange={(e) => setInputValue(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                      placeholder={
-                        !permissionChecker.canSendMessage(user, currentRoomMember)
-                          ? "你已被禁言，无法发送消息"
-                          : "输入消息..."
-                      }
-                      disabled={!permissionChecker.canSendMessage(user, currentRoomMember)}
-                      className={`w-full bg-gray-800 text-white rounded-full py-3 px-4 focus:outline-none focus:ring-2 focus:ring-gray-600 ${
-                        !permissionChecker.canSendMessage(user, currentRoomMember) 
-                          ? 'opacity-50 cursor-not-allowed' 
-                          : ''
-                      }`}
-                    />
-                  </div>
-                  <button
-                    className={`w-12 h-12 text-white p-3 rounded-full transition-colors rounded-button whitespace-nowrap focus:outline-none align-center flex items-center justify-center ${
-                      !permissionChecker.canSendMessage(user, currentRoomMember)
-                        ? 'bg-gray-600 cursor-not-allowed opacity-50'
-                        : 'bg-blue-600 hover:bg-blue-700'
-                    }`}
-                    onClick={handleSend}
-                    disabled={!permissionChecker.canSendMessage(user, currentRoomMember)}
-                  >
-                    <SendOutlined />
-                  </button>
-                </div>
-              </div>
+              <MessageInput
+                inputValue={inputValue}
+                onInputChange={setInputValue}
+                onSend={handleSend}
+                users={users}
+                currentUserId={user?.userId}
+                messages={messages}
+                canSendMessage={permissionChecker.canSendMessage(user, currentRoomMember)}
+                muteReason={permissionChecker.getMuteReason(user, currentRoomMember)}
+                replyingToMessageId={replyingToMessageId}
+                onCancelReply={() => setReplyingToMessageId(null)}
+              />
             </div>
             )}
           </div>

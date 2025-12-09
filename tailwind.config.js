@@ -23,6 +23,7 @@ export default {
           800: '#29292B', // 只覆盖 gray-800
           900: '#212123', // 覆盖 gray-900
         },
+        'sidebar':'#121212',
         'ground': '#1A1A1C',
         'primary': '#212123',
         'secondary': '#29292B',

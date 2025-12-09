@@ -14,7 +14,7 @@ const MuteMemberModal: React.FC<MuteMemberModalProps> = ({
   onClose,
   onConfirm,
 }) => {
-  const [duration, setDuration] = useState<number>(10);
+  const [duration, setDuration] = useState<number>(300);
   const [reason, setReason] = useState('');
 
   const handleOk = () => {

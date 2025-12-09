@@ -92,13 +92,13 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
 
   return (
     <div
-      className="fixed bg-gray-800 border border-gray-700 rounded-lg shadow-lg py-1 z-50 min-w-[130px] animate-expand-menu"
+      className="fixed bg-gray-800 border border-gray-700 rounded-lg shadow-lg  z-50 min-w-[130px] animate-expand-menu"
       style={{ left: `${position.x+10}px`, top: `${position.y+10}px` }}
       onClick={(e) => e.stopPropagation()}
     >
       {items.map((item, index) => {
         if (item.type === 'divider') {
-          return <div key={`divider-${index}`} className="border-t border-gray-700 my-1"></div>;
+          return <div key={`divider-${index}`} className="border-t border-gray-700 "></div>;
         }
 
         const menuItem = item as MenuItem;

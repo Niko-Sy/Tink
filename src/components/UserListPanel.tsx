@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { notification} from 'antd';
+import { notification, Modal } from 'antd';
 import type { User } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { permissionChecker } from '../utils/permissions';
@@ -24,6 +24,9 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
   const [showMuteModal, setShowMuteModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState('');
+  const [showKickModal, setShowKickModal] = useState(false);
+  const [kickTargetUserId, setKickTargetUserId] = useState<string | null>(null);
+  const [kickTargetUserName, setKickTargetUserName] = useState('');
   const { contextMenu, handleContextMenu, closeContextMenu } = useContextMenu();
   const { user, currentRoomMember} = useAuth();
   const [api, contextHolder] = notification.useNotification({
@@ -214,6 +217,27 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
       });
       return;
     }
+    
+    // 设置状态并显示确认对话框
+    setKickTargetUserId(userId);
+    setKickTargetUserName(targetUser.name);
+    setShowKickModal(true);
+  };
+  
+  // 确认踢出成员
+  const handleConfirmKick = async () => {
+    if (!kickTargetUserId) return;
+    
+    const targetUser = users.find(u => u.userId === kickTargetUserId);
+    if (!targetUser) return;
+    
+    setShowKickModal(false);
+    await executeKickMember(kickTargetUserId, targetUser);
+  };
+  
+  // 执行踢出操作
+  const executeKickMember = async (userId: string, targetUser: User) => {
+    if (!currentRoomMember?.roomId) return;
     
     try {
       // 获取目标用户的成员信息
@@ -630,6 +654,22 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
         )}
       </div>
     </div>
+    
+    {/* 踢出确认对话框 */}
+    <Modal
+      title="确认踢出成员"
+      open={showKickModal}
+      onOk={handleConfirmKick}
+      onCancel={() => setShowKickModal(false)}
+      okText="确定"
+      cancelText="取消"
+      okButtonProps={{ danger: true }}
+      centered
+      destroyOnClose
+    >
+      <p>确定要将 <strong>{kickTargetUserName}</strong> 踢出聊天室吗？</p>
+      <p className="text-gray-500 text-sm mt-2">此操作不可撤销。</p>
+    </Modal>
     </>
   );
 };

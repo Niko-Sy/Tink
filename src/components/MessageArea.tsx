@@ -23,6 +23,7 @@ interface MessageAreaProps {
   onRemoveUser?: (userId: string) => void;
   onUpdateUserRole?: (userId: string, roomRole: 'owner' | 'admin' | 'member') => void;
   onLoadMoreMessages?: (roomId: string) => void;
+  onMentionUser?: (userName: string) => void;
   isLoadingMore?: boolean;
   hasMore?: boolean;
 }
@@ -37,6 +38,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
   onRemoveUser,
   onUpdateUserRole,
   onLoadMoreMessages,
+  onMentionUser,
   isLoadingMore = false,
   hasMore = true,
 }) => {
@@ -52,6 +54,9 @@ const MessageArea: React.FC<MessageAreaProps> = ({
   const [showMuteModal, setShowMuteModal] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedUserName, setSelectedUserName] = useState('');
+  const [showKickModal, setShowKickModal] = useState(false);
+  const [kickTargetUserId, setKickTargetUserId] = useState<string | null>(null);
+  const [kickTargetUserName, setKickTargetUserName] = useState('');
   const lastScrollTopRef = useRef<number>(0);
   const isLoadingMoreRef = useRef<boolean>(false);
   const previousMessageCountRef = useRef<number>(0);
@@ -159,16 +164,14 @@ const MessageArea: React.FC<MessageAreaProps> = ({
     if (shouldRestoreScrollRef.current && anchorMessageIdRef.current) {
       // 使用 requestAnimationFrame 确保 DOM 已更新
       requestAnimationFrame(() => {
-        const anchorElement = document.querySelector(
-          `[data-message-id="${anchorMessageIdRef.current}"]`
-        );
-        if (anchorElement && container) {
-          // 计算锚点元素距离容器顶部的距离
-          const anchorTop = (anchorElement as HTMLElement).offsetTop;
-          // 恢复到加载前的视觉位置
-          container.scrollTop = anchorTop - 100; // 保持一些顶部边距
-          
-          // 恢复滚动位置后重新检查按钮显示状态
+          const anchorElement = document.querySelector(
+            `[data-message-id="${anchorMessageIdRef.current}"]`
+          );
+          if (anchorElement && container) {
+            // 计算锚点元素距离容器顶部的距离
+            const anchorTop = (anchorElement as HTMLElement).offsetTop;
+            // 恢复到加载前的视觉位置（考虑新的 pt-3 padding）
+            container.scrollTop = anchorTop - 50; // 调整顶部边距以适应新的 padding          // 恢复滚动位置后重新检查按钮显示状态
           const scrollHeight = container.scrollHeight;
           const clientHeight = container.clientHeight;
           const scrollTop = container.scrollTop;
@@ -448,6 +451,18 @@ const MessageArea: React.FC<MessageAreaProps> = ({
   const handleAvatarClick = (e: React.MouseEvent, userId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // 检查用户是否存在
+    const targetUser = users.find(u => u.userId === userId);
+    if (!targetUser) {
+      api.warning({
+        message: '用户不存在',
+        description: '该用户已退出聊天室',
+        duration: 2,
+      });
+      return;
+    }
+    
     openContextMenu(e.clientX, e.clientY, {
       type: 'avatar',
       userId
@@ -502,11 +517,10 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         break;
       case 'mention':
         closeContextMenu();
-        api.info({ 
-          message: '功能开发中', 
-          description: '此功能正在开发中，敬请期待！', 
-          duration: 2 
-        });
+        const mentionUser = users.find(u => u.userId === data);
+        if (mentionUser && onMentionUser) {
+          onMentionUser(mentionUser.name);
+        }
         break;
       case 'addFriend':
         closeContextMenu();
@@ -557,8 +571,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         });
         break;
       case 'kick':
-        closeContextMenu();
-        await handleKickMember(data);
+        handleKickMember(data);
         break;
       case 'report':
         closeContextMenu();
@@ -656,6 +669,30 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       });
       return;
     }
+    
+    // 设置状态并显示确认对话框
+    setKickTargetUserId(userId);
+    setKickTargetUserName(targetUser.name);
+    setShowKickModal(true);
+    
+    // 立即关闭上下文菜单
+    closeContextMenu();
+  };
+  
+  // 确认踢出成员
+  const handleConfirmKick = async () => {
+    if (!kickTargetUserId) return;
+    
+    const targetUser = users.find(u => u.userId === kickTargetUserId);
+    if (!targetUser) return;
+    
+    setShowKickModal(false);
+    await executeKickMember(kickTargetUserId, targetUser);
+  };
+  
+  // 执行踢出操作
+  const executeKickMember = async (userId: string, targetUser: User) => {
+    if (!currentRoomMember?.roomId) return;
     
     try {
       // 获取目标用户的成员信息
@@ -931,7 +968,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         onConfirm={handleMuteConfirm}
       />
       
-      <div className="flex-1 overflow-y-auto p-6 bg-ground relative">
+      <div className="flex-1 overflow-y-auto px-8 pt-3 pb-2 bg-ground relative">
         <div 
           ref={messagesContainerRef}
           className="h-full overflow-y-auto"
@@ -1118,7 +1155,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
             scrollToBottom();
             setShowScrollToBottom(false);
           }}
-          className="absolute bottom-6 right-6 z-10 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110 group"
+          className="absolute bottom-4 right-6 z-10 bg-gray-700 hover:bg-gray-600 text-white rounded-full p-3 shadow-lg transition-all duration-300 hover:scale-110 group"
           title="回到底部"
         >
           <svg 
@@ -1186,6 +1223,22 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         ),
       }}
       />
+    </Modal>
+    
+    {/* 踢出确认对话框 */}
+    <Modal
+      title="确认踢出成员"
+      open={showKickModal}
+      onOk={handleConfirmKick}
+      onCancel={() => setShowKickModal(false)}
+      okText="确定"
+      cancelText="取消"
+      okButtonProps={{ danger: true }}
+      centered
+      destroyOnClose
+    >
+      <p>确定要将 <strong>{kickTargetUserName}</strong> 踢出聊天室吗？</p>
+      <p className="text-gray-500 text-sm mt-2">此操作不可撤销。</p>
     </Modal>
     </>
   );
