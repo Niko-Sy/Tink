@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { PlusOutlined } from '@ant-design/icons';
+import { Modal, notification } from 'antd';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import type { User, ChatRoom } from '../types';
@@ -7,8 +8,9 @@ import { DEFAULT_AVATAR_URL } from '../config/constants';
 import logo from '../assets/Tink_white.svg';
 import { useContextMenu } from '../hooks/useContextMenu';
 import ContextMenu from './ContextMenu';
-import { MenuItems, createDivider } from '../utils/menuItems';
+import { MenuItems, createDivider, setNavigateFunction } from '../utils/menuItems';
 import type { MenuItemType } from './ContextMenu';
+import { chatroomService } from '../services';
 
 interface SidebarProps {
   chatRooms: ChatRoom[];
@@ -31,6 +33,20 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isRoomListCollapsed, setIsRoomListCollapsed] = useState(false);
   const [showText, setShowText] = useState(true); // 控制文字显示
   const [currentView, setCurrentView] = useState<'chat' | 'contacts'>('chat'); // 切换聊天室/通讯录视图
+  const [roomInfoModal, setRoomInfoModal] = useState<{ visible: boolean; roomId: string | null; roomInfo: ChatRoom | null }>({ visible: false, roomId: null, roomInfo: null });
+  const [showLeaveRoomModal, setShowLeaveRoomModal] = useState(false);
+  const [leaveRoomId, setLeaveRoomId] = useState<string | null>(null);
+  const [leaveRoomName, setLeaveRoomName] = useState('');
+  const [api, contextHolder] = notification.useNotification({
+    placement: 'topRight',
+    top: 24,
+    duration: 3,
+  });
+
+  // 设置全局导航函数
+  React.useEffect(() => {
+    setNavigateFunction(navigate);
+  }, [navigate]);
 
   // 生成用户菜单项
   const generateUserMenuItems = (): MenuItemType[] => [
@@ -39,11 +55,31 @@ const Sidebar: React.FC<SidebarProps> = ({
     MenuItems.privacy(() => handleMenuAction('privacy')),
     MenuItems.notifications(() => handleMenuAction('notifications')),
     createDivider(),
-    MenuItems.help(() => handleMenuAction('help')),
-    MenuItems.feedback(() => handleMenuAction('feedback')),
+    MenuItems.help(),
+    MenuItems.feedback(),
     createDivider(),
     MenuItems.logout(() => handleMenuAction('logout')),
   ];
+
+  // 生成聊天室菜单项
+  const generateRoomMenuItems = (roomId: string): MenuItemType[] => {
+    const room = chatRooms.find(r => r.roomId === roomId);
+    const hasUnread = room && room.unread >= 1;
+    
+    return [
+      MenuItems.viewRoomInfo(() => handleRoomMenuAction('viewInfo', roomId)),
+      createDivider(),
+      MenuItems.inviteFriends(() => handleRoomMenuAction('inviteFriends', roomId)),
+      MenuItems.shareRoom(() => handleRoomMenuAction('shareRoom', roomId)),
+      createDivider(),
+      MenuItems.pinRoom(() => handleRoomMenuAction('pinRoom', roomId)),
+      hasUnread 
+        ? MenuItems.markRead(() => handleRoomMenuAction('markRead', roomId))
+        : MenuItems.markUnread(() => handleRoomMenuAction('markUnread', roomId)),
+      createDivider(),
+      MenuItems.leaveRoom(() => handleRoomMenuAction('leave', roomId)),
+    ];
+  };
 
   // 处理菜单操作
   const handleMenuAction = (action: string) => {
@@ -64,18 +100,139 @@ const Sidebar: React.FC<SidebarProps> = ({
       case 'notifications':
         console.log('打开通知设置');
         break;
-      case 'help':
-        console.log('打开帮助中心');
-        break;
-      case 'feedback':
-        console.log('打开反馈建议');
-        break;
       case 'logout':
         console.log('退出登录');
         logout().then(() => {
           navigate('/login');
         });
         break;
+    }
+  };
+
+  // 处理聊天室菜单操作
+  const handleRoomMenuAction = async (action: string, roomId: string) => {
+    closeContextMenu();
+    
+    switch(action) {
+      case 'viewInfo':
+        await handleViewRoomInfo(roomId);
+        break;
+      case 'inviteFriends':
+        // TODO: 实现邀请好友功能
+        api.info({
+          message: '邀请好友',
+          description: '邀请好友功能开发中,敬请期待!',
+        });
+        break;
+      case 'shareRoom':
+        // TODO: 实现分享聊天室功能
+        api.info({
+          message: '分享聊天室',
+          description: '分享聊天室功能开发中,敬请期待!',
+        });
+        break;
+      case 'pinRoom':
+        // TODO: 实现置顶功能
+        api.info({
+          message: '置顶',
+          description: '置顶功能开发中,敬请期待!',
+        });
+        break;
+      case 'markUnread':
+        // 标记为未读
+        {
+          const room = chatRooms.find(r => r.roomId === roomId);
+          if (room) {
+            room.unread = 1;
+            api.success({
+              message: '标记为未读',
+              description: `已将 "${room.name}" 标记为未读`,
+            });
+          }
+        }
+        break;
+      case 'markRead':
+        // 标记为已读
+        {
+          const room = chatRooms.find(r => r.roomId === roomId);
+          if (room) {
+            room.unread = 0;
+            api.success({
+              message: '标记为已读',
+              description: `已将 "${room.name}" 标记为已读`,
+            });
+          }
+        }
+        break;
+      case 'leave':
+        await handleLeaveRoom(roomId);
+        break;
+    }
+  };
+
+  // 查看聊天室详情
+  const handleViewRoomInfo = async (roomId: string) => {
+    try {
+      const response = await chatroomService.getRoomInfo(roomId);
+      if (response.code === 200 && response.data) {
+        setRoomInfoModal({ visible: true, roomId, roomInfo: response.data });
+      } else {
+        api.error({
+          message: '获取失败',
+          description: response.message || '无法获取聊天室详情',
+        });
+      }
+    } catch (err) {
+      console.error('获取聊天室详情失败:', err);
+      api.error({
+        message: '获取失败',
+        description: '网络错误,请稍后重试',
+      });
+    }
+  };
+
+  // 退出聊天室
+  const handleLeaveRoom = async (roomId: string) => {
+    const room = chatRooms.find(r => r.roomId === roomId);
+    
+    // 设置状态并显示确认对话框
+    setLeaveRoomId(roomId);
+    setLeaveRoomName(room?.name || '该聊天室');
+    setShowLeaveRoomModal(true);
+  };
+
+  // 确认退出聊天室
+  const handleConfirmLeaveRoom = async () => {
+    if (!leaveRoomId) return;
+    
+    setShowLeaveRoomModal(false);
+    
+    try {
+      const response = await chatroomService.leaveRoom({ roomId: leaveRoomId });
+      if (response.code === 200) {
+        api.success({
+          message: '退出成功',
+          description: `已退出聊天室 "${leaveRoomName}"`,
+        });
+        // 如果退出的是当前聊天室,切换到第一个聊天室
+        if (activeChatRoom === leaveRoomId && chatRooms.length > 1) {
+          const nextRoom = chatRooms.find(r => r.roomId !== leaveRoomId);
+          if (nextRoom) {
+            onChatRoomChange(nextRoom.roomId);
+          }
+        }
+      } else {
+        api.error({
+          message: '退出失败',
+          description: response.message || '无法退出聊天室',
+        });
+      }
+    } catch (err) {
+      console.error('退出聊天室失败:', err);
+      api.error({
+        message: '退出失败',
+        description: '网络错误,请稍后重试',
+      });
     }
   };
 
@@ -270,6 +427,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                       : 'hover:bg-gray-800 text-gray-400'
                   }`}
                   onClick={() => onChatRoomChange(room.roomId)}
+                  onContextMenu={(e) => {
+                    // 主页聊天室不显示右键菜单
+                    if (room.roomId === '100000001') {
+                      e.preventDefault();
+                      return;
+                    }
+                    handleContextMenu(e, { roomId: room.roomId });
+                  }}
                   title={isRoomListCollapsed ? room.name : ''}
                 >
                   <i className={`${room.icon} ${isRoomListCollapsed ? 'text-xl' : 'mr-3 text-xl'}`}></i>
@@ -345,10 +510,98 @@ const Sidebar: React.FC<SidebarProps> = ({
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={generateUserMenuItems()}
+          items={contextMenu.data?.roomId ? generateRoomMenuItems(contextMenu.data.roomId) : generateUserMenuItems()}
           onClose={closeContextMenu}
         />
       )}
+
+      {/* 聊天室详情 Modal */}
+      <Modal
+        title="聊天室详情"
+        open={roomInfoModal.visible}
+        onCancel={() => setRoomInfoModal({ visible: false, roomId: null, roomInfo: null })}
+        footer={null}
+        centered
+        width={500}
+        destroyOnClose
+      >
+        {roomInfoModal.roomInfo && (
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-16 h-16 bg-gray-700 rounded-lg flex items-center justify-center">
+                <i className={`${roomInfoModal.roomInfo.icon} text-3xl text-blue-400`}></i>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-100">{roomInfoModal.roomInfo.name}</h3>
+                <p className="text-sm text-gray-400">ID: {roomInfoModal.roomInfo.roomId}</p>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex justify-between py-2 border-b border-gray-700">
+                <span className="text-gray-400">类型</span>
+                <span className="text-gray-200">
+                  {roomInfoModal.roomInfo.type === 'public' && '🌐 公开'}
+                  {roomInfoModal.roomInfo.type === 'protected' && '🔒 受保护'}
+                  {roomInfoModal.roomInfo.type === 'private' && '🔐 私密'}
+                </span>
+              </div>
+              
+              <div className="flex justify-between py-2 border-b border-gray-700">
+                <span className="text-gray-400">描述</span>
+                <span className="text-gray-200">{roomInfoModal.roomInfo.description || '暂无描述'}</span>
+              </div>
+              
+              <div className="flex justify-between py-2 border-b border-gray-700">
+                <span className="text-gray-400">成员数</span>
+                <span className="text-gray-200">{roomInfoModal.roomInfo.peopleCount || 0} 人</span>
+              </div>
+              
+              <div className="flex justify-between py-2 border-b border-gray-700">
+                <span className="text-gray-400">在线人数</span>
+                <span className="text-green-400">{roomInfoModal.roomInfo.onlineCount || 0} 人</span>
+              </div>
+              
+              <div className="flex justify-between py-2 border-b border-gray-700">
+                <span className="text-gray-400">创建时间</span>
+                <span className="text-gray-200">
+                  {roomInfoModal.roomInfo.createdTime 
+                    ? new Date(roomInfoModal.roomInfo.createdTime).toLocaleString('zh-CN')
+                    : '未知'}
+                </span>
+              </div>
+              
+              {roomInfoModal.roomInfo.lastMessageTime && (
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-400">最后消息</span>
+                  <span className="text-gray-200">
+                    {new Date(roomInfoModal.roomInfo.lastMessageTime).toLocaleString('zh-CN')}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* 退出聊天室确认对话框 */}
+      <Modal
+        title="确认退出聊天室"
+        open={showLeaveRoomModal}
+        onOk={handleConfirmLeaveRoom}
+        onCancel={() => setShowLeaveRoomModal(false)}
+        okText="确定"
+        cancelText="取消"
+        okButtonProps={{ danger: true }}
+        centered
+        destroyOnClose
+      >
+        <p>确定要退出 <strong>{leaveRoomName}</strong> 吗?</p>
+        <p className="text-gray-500 text-sm mt-2">退出后可以重新加入。</p>
+      </Modal>
+
+      {/* Notification Context Holder */}
+      {contextHolder}
     </div>
   );
 };

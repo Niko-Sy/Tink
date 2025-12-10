@@ -239,6 +239,11 @@ export const permissionChecker: PermissionChecker = {
     if (targetMember && member?.roomRole === 'admin' && targetMember.roomRole === 'owner') {
       return false;
     }
+    
+    // 管理员不能删除其他管理员的消息
+    if (targetMember && member?.roomRole === 'admin' && targetMember.roomRole === 'admin') {
+      return false;
+    }
 
     return true;
   },
@@ -265,6 +270,11 @@ export const permissionChecker: PermissionChecker = {
     if (targetMember && member?.roomRole === 'admin' && targetMember.roomRole === 'owner') {
       return false;
     }
+    
+    // 管理员不能禁言其他管理员
+    if (targetMember && member?.roomRole === 'admin' && targetMember.roomRole === 'admin') {
+      return false;
+    }
 
     return true;
   },
@@ -289,6 +299,11 @@ export const permissionChecker: PermissionChecker = {
 
     // 如果提供了目标成员信息，管理员不能踢出群主
     if (targetMember && member?.roomRole === 'admin' && targetMember.roomRole === 'owner') {
+      return false;
+    }
+    
+    // 管理员不能踢出其他管理员
+    if (targetMember && member?.roomRole === 'admin' && targetMember.roomRole === 'admin') {
       return false;
     }
 

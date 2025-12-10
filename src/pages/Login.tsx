@@ -11,7 +11,7 @@ const Login: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false); // 控制页面加载动画
   const [isTransitioning, setIsTransitioning] = useState(false); // 控制切换动画
-  const [isLoggingIn, setIsLoggingIn] = useState(false); // 控制登录加载动画
+  const [isNavigating, setIsNavigating] = useState(false); // 控制导航到App的加载动画
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -38,7 +38,6 @@ const Login: React.FC = () => {
   useEffect(() => {
     if (error) {
       setErrors(prev => ({ ...prev, api: error }));
-      setIsLoggingIn(false);
     }
   }, [error]);
 
@@ -107,9 +106,6 @@ const Login: React.FC = () => {
     // 清除之前的本地错误（不清除 AuthContext 的错误，让它自己管理）
     setErrors(prev => ({ ...prev, api: '' }));
 
-    // 显示加载动画
-    setIsLoggingIn(true);
-
     try {
       const success = await login({
         username: formData.username,
@@ -117,15 +113,13 @@ const Login: React.FC = () => {
       });
 
       if (success) {
-        // 登录成功，跳转到主页
+        // 登录成功，显示加载动画并跳转到主页
+        setIsNavigating(true);
         navigate('/');
-      } else {
-        // 登录失败，停止加载动画（错误信息由 useEffect 监听 error 显示）
-        setIsLoggingIn(false);
       }
     } catch (err) {
-      // 捕获异常，停止加载动画
-      setIsLoggingIn(false);
+      // 捕获异常
+      console.error('登录失败:', err);
     }
   };
 
@@ -137,9 +131,6 @@ const Login: React.FC = () => {
     setErrors(prev => ({ ...prev, api: '' }));
     clearError();
 
-    // 显示加载动画
-    setIsLoggingIn(true);
-
     try {
       const success = await register({
         username: formData.username,
@@ -149,15 +140,13 @@ const Login: React.FC = () => {
       });
 
       if (success) {
-        // 注册成功，跳转到主页
+        // 注册成功，显示加载动画并跳转到主页
+        setIsNavigating(true);
         navigate('/');
-      } else {
-        // 注册失败，停止加载动画（错误信息由 useEffect 监听 error 显示）
-        setIsLoggingIn(false);
       }
     } catch (err) {
-      // 捕获异常，停止加载动画
-      setIsLoggingIn(false);
+      // 捕获异常
+      console.error('注册失败:', err);
     }
   };
 
@@ -202,14 +191,11 @@ const Login: React.FC = () => {
     }, 200);
   };
 
-  // 检查是否正在加载中
-  const isSubmitting = isLoggingIn || loading;
-
   return (
     <>
-      {/* 加载屏幕 */}
-      {isSubmitting && (
-        <LoadingScreen message={isLogin ? '正在登录...' : '正在注册...'} />
+      {/* 加载屏幕 - 仅在成功后跳转到App时显示 */}
+      {isNavigating && (
+        <LoadingScreen message="正在进入应用..." />
       )}
       
       {/* 登录/注册表单 */}
@@ -369,12 +355,12 @@ const Login: React.FC = () => {
             <button
               type="button"
               onClick={isLogin ? handleLogin : handleRegister}
-              disabled={isSubmitting}
+              disabled={loading}
               className={`w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transform hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/50 active:scale-95 ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                loading ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
-              {isSubmitting ? (
+              {loading ? (
                 <span className="flex items-center justify-center">
                   <svg className="animate-spin h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -392,9 +378,9 @@ const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={toggleMode}
-                disabled={isSubmitting}
+                disabled={loading}
                 className={`text-blue-400 hover:text-blue-300 text-sm focus:outline-none transition-all duration-200 hover:underline transform hover:scale-105 ${
-                  isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+                  loading ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
                 {isLogin ? '还没有账户？立即注册' : '已有账户？立即登录'}

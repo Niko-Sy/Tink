@@ -7,7 +7,7 @@ import { permissionChecker } from '../utils/permissions';
 import { useContextMenu } from '../hooks/useContextMenu';
 import { useMessageActions } from '../hooks/useMessageActions';
 import ContextMenu from './ContextMenu';
-import { MenuItems, createDivider } from '../utils/menuItems';
+import { MenuItems, createDivider, setNavigateFunction } from '../utils/menuItems';
 import type { MenuItemType } from './ContextMenu';
 import { memberService } from '../services/member';
 import MuteMemberModal from './MuteMemberModal';
@@ -69,6 +69,11 @@ const MessageArea: React.FC<MessageAreaProps> = ({
     top: 24,
     duration: 2,
   });
+  
+  // 设置全局导航函数
+  React.useEffect(() => {
+    setNavigateFunction(navigate);
+  }, [navigate]);
   
   // 消息操作hook
   const {
@@ -327,7 +332,11 @@ const MessageArea: React.FC<MessageAreaProps> = ({
       }
     } else {
       // 他人的消息 - 管理员和房主只能删除，不能编辑
-      if (permissionChecker.canDeleteMessage(user, currentRoomMember, message)) {
+      // 获取消息发送者的成员信息用于权限检查
+      const messageSender = users.find(u => u.userId === message.userId);
+      const targetMember = messageSender ? { roomRole: messageSender.roomRole } : undefined;
+      
+      if (permissionChecker.canDeleteMessage(user, currentRoomMember, message, targetMember)) {
         items.push(MenuItems.delete(() => {
           handleRecallMessage(activeChatRoom, messageId).then(() => {
             onDeleteMessage?.(activeChatRoom, messageId);
@@ -363,8 +372,8 @@ const MessageArea: React.FC<MessageAreaProps> = ({
     const isAdmin = targetUser.roomRole === 'admin' || targetUser.roomRole === 'owner';
     const isOwner = targetUser.roomRole === 'owner';
     const isMuted = targetUser.isMuted || false;
-    const canManageAdmins = permissionChecker.canSetAdmin(user, currentRoomMember);
-    const canMute = permissionChecker.canMuteMember(user, currentRoomMember);
+    const canManageAdmins = permissionChecker.canSetAdmin(user, currentRoomMember, targetUser);
+    const canMute = permissionChecker.canMuteMember(user, currentRoomMember, targetUser);
     
     const menuItems: MenuItemType[] = [
       MenuItems.privateMessage(() => handleMenuAction('privateMessage', userId)),
@@ -400,7 +409,7 @@ const MessageArea: React.FC<MessageAreaProps> = ({
     menuItems.push(
       MenuItems.kick(
         () => handleMenuAction('kick', userId),
-        !permissionChecker.canRemoveMember(user, currentRoomMember)
+        !permissionChecker.canRemoveMember(user, currentRoomMember, targetUser)
       )
     );
     
@@ -433,8 +442,8 @@ const MessageArea: React.FC<MessageAreaProps> = ({
     MenuItems.privacy(() => handleMenuAction('privacy')),
     MenuItems.notifications(() => handleMenuAction('notifications')),
     createDivider(),
-    MenuItems.help(() => handleMenuAction('help')),
-    MenuItems.feedback(() => handleMenuAction('feedback')),
+    MenuItems.help(),
+    MenuItems.feedback(),
   ];
 
   // 处理消息体右键菜单
@@ -547,22 +556,6 @@ const MessageArea: React.FC<MessageAreaProps> = ({
         });
         break;
       case 'notifications':
-        closeContextMenu();
-        api.info({ 
-          message: '功能开发中', 
-          description: '此功能正在开发中，敬请期待！', 
-          duration: 2 
-        });
-        break;
-      case 'help':
-        closeContextMenu();
-        api.info({ 
-          message: '功能开发中', 
-          description: '此功能正在开发中，敬请期待！', 
-          duration: 2 
-        });
-        break;
-      case 'feedback':
         closeContextMenu();
         api.info({ 
           message: '功能开发中', 

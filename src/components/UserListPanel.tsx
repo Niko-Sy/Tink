@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { permissionChecker } from '../utils/permissions';
 import ContextMenu from './ContextMenu';
 import { useContextMenu } from '../hooks/useContextMenu';
-import { MenuItems, createDivider } from '../utils/menuItems';
+import { MenuItems, createDivider, setNavigateFunction } from '../utils/menuItems';
 import type { MenuItemType } from './ContextMenu';
 import { memberService } from '../services/member';
 import MuteMemberModal from './MuteMemberModal';
@@ -34,6 +34,11 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
     top: 24,
     duration: 3,
   });
+  
+  // 设置全局导航函数
+  React.useEffect(() => {
+    setNavigateFunction(navigate);
+  }, [navigate]);
 
   // 处理用户点击
   const handleUserClick = (e: React.MouseEvent, userId: string) => {
@@ -69,20 +74,6 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
         api.info({
           message: '通知设置',
           description: '通知设置功能开发中，敬请期待！',
-        });
-        break;
-      case 'help':
-        console.log('打开帮助中心');
-        api.info({
-          message: '帮助中心',
-          description: '帮助中心功能开发中，敬请期待！',
-        });
-        break;
-      case 'feedback':
-        console.log('打开反馈建议');
-        api.info({
-          message: '反馈建议',
-          description: '反馈建议功能开发中，敬请期待！',
         });
         break;
     }
@@ -468,8 +459,8 @@ const UserListPanel: React.FC<UserListPanelProps> = ({ users, onRemoveUser, onUp
         MenuItems.privacy(() => handleSelfMenuAction('privacy')),
         MenuItems.notifications(() => handleSelfMenuAction('notifications')),
         createDivider(),
-        MenuItems.help(() => handleSelfMenuAction('help')),
-        MenuItems.feedback(() => handleSelfMenuAction('feedback')),
+        MenuItems.help(),
+        MenuItems.feedback(),
         // createDivider(),
         // MenuItems.logout(() => handleSelfMenuAction('logout')),
       ];

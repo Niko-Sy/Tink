@@ -4,6 +4,7 @@ import { SettingOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-desi
 import { notification } from 'antd';
 import { HOME_ROOM_ID } from './config/constants';
 import logger from './utils/logger';
+import LoadingScreen from './components/LoadingScreen';
 import MessageArea from './components/MessageArea';
 import UserListPanel from './components/UserListPanel';
 import Sidebar from './components/Sidebar';
@@ -27,6 +28,11 @@ const App: React.FC = () => {
     duration: 3,
     maxCount: 3,
   });
+  
+  // 应用加载状态
+  const [isAppLoading, setIsAppLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingMessage, setLoadingMessage] = useState('正在初始化...');
   
   // 通知回调函数
   const showSuccess = (message: string, description: string | React.ReactNode, duration = 2) => {
@@ -158,6 +164,55 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // 监听加载状态,确保所有关键数据加载完成
+  useEffect(() => {
+    if (!user) {
+      // 如果没有用户,直接标记为已加载(避免登录页卡住)
+      setIsAppLoading(false);
+      return;
+    }
+
+    let progress = 0;
+    let message = '正在初始化...';
+    
+    // 检查WebSocket连接
+    if (wsClient.isConnected) {
+      progress += 25;
+      message = '正在连接服务器...';
+    }
+    
+    // 检查聊天室列表
+    if (chatRooms.length > 0) {
+      progress += 25;
+      message = '正在加载聊天室...';
+    }
+    
+    // 检查当前聊天室
+    if (activeChatRoom) {
+      progress += 25;
+      message = '正在准备聊天室...';
+    }
+    
+    // 检查初始数据加载
+    if (activeChatRoom === HOME_ROOM_ID || (messages.length >= 0 && users.length >= 0)) {
+      progress += 25;
+      message = '正在加载消息...';
+    }
+    
+    setLoadingProgress(progress);
+    setLoadingMessage(message);
+    
+    // 当进度达到100%时,延迟一小段时间后关闭加载动画
+    if (progress >= 100) {
+      setLoadingMessage('加载完成!');
+      const timer = setTimeout(() => {
+        setIsAppLoading(false);
+      }, 500); // 延迟500ms确保动画流畅
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user, wsClient.isConnected, chatRooms.length, activeChatRoom, messages.length, users.length]);
+
   // WebSocket 连接管理
   useEffect(() => {
     logger.log('[App] WebSocket 连接管理 useEffect', { user: user?.userId, isConnected: wsClient.isConnected });
@@ -288,8 +343,16 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-ground text-white">
-      {contextHolder}
+    <>
+      {/* 应用加载动画 */}
+      {isAppLoading && (
+        <LoadingScreen 
+          message={`${loadingMessage} ${loadingProgress}%`}
+        />
+      )}
+      
+      <div className="flex h-screen w-screen bg-ground text-white">
+        {contextHolder}
       
       {/* 调试面板 */}
       {showDebugPanel && false && (
@@ -466,7 +529,8 @@ const App: React.FC = () => {
         currentSettings={getCurrentRoomSettings()}
         canDelete={currentRoomMember?.roomRole === 'owner'}
       />
-    </div>
+      </div>
+    </>
   );
 };
 

@@ -1,6 +1,21 @@
 import React from 'react';
 import type { MenuItem, MenuItemType } from '../components/ContextMenu';
 
+// 用于导航的辅助函数
+let globalNavigate: ((path: string) => void) | null = null;
+
+export const setNavigateFunction = (navigate: (path: string) => void) => {
+  globalNavigate = navigate;
+};
+
+const navigateTo = (path: string) => {
+  if (globalNavigate) {
+    globalNavigate(path);
+  } else {
+    console.warn('Navigate function not set. Call setNavigateFunction first.');
+  }
+};
+
 // 图标组件
 const Icons = {
   Message: () => (
@@ -110,6 +125,41 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
     </svg>
   ),
+  Info: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  Exit: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+    </svg>
+  ),
+  Invite: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+    </svg>
+  ),
+  Share: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+    </svg>
+  ),
+  Pin: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+    </svg>
+  ),
+  MarkUnread: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" />
+    </svg>
+  ),
+  MarkRead: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
 };
 
 // 菜单项工厂函数
@@ -148,8 +198,8 @@ export const MenuItems = {
   accountSettings: (onClick: () => void) => createMenuItem('accountSettings', '账号设置', 'Settings', onClick),
   privacy: (onClick: () => void) => createMenuItem('privacy', '隐私设置', 'Privacy', onClick),
   notifications: (onClick: () => void) => createMenuItem('notifications', '通知设置', 'Notification', onClick),
-  help: (onClick: () => void) => createMenuItem('help', '帮助中心', 'Help', onClick),
-  feedback: (onClick: () => void) => createMenuItem('feedback', '反馈建议', 'Feedback', onClick),
+  help: () => createMenuItem('help', '帮助中心', 'Help', () => navigateTo('/help')),
+  feedback: () => createMenuItem('feedback', '反馈建议', 'Feedback', () => navigateTo('/feedback')),
   logout: (onClick: () => void) => createMenuItem('logout', '退出登录', 'Logout', onClick, { color: 'danger' }),
   
   // 管理相关
@@ -167,4 +217,13 @@ export const MenuItems = {
   delete: (onClick: () => void, hidden?: boolean) => createMenuItem('delete', '撤回消息', 'Delete', onClick, { color: 'danger', hidden }),
   reply: (onClick: () => void) => createMenuItem('reply', '回复消息', 'Reply', onClick),
   copy: (onClick: () => void) => createMenuItem('copy', '复制文本', 'Copy', onClick),
+  
+  // 聊天室相关
+  viewRoomInfo: (onClick: () => void) => createMenuItem('viewRoomInfo', '查看详情', 'Info', onClick),
+  inviteFriends: (onClick: () => void) => createMenuItem('inviteFriends', '邀请好友', 'Invite', onClick),
+  shareRoom: (onClick: () => void) => createMenuItem('shareRoom', '分享聊天室', 'Share', onClick),
+  pinRoom: (onClick: () => void) => createMenuItem('pinRoom', '置顶', 'Pin', onClick),
+  markUnread: (onClick: () => void) => createMenuItem('markUnread', '标记为未读', 'MarkUnread', onClick),
+  markRead: (onClick: () => void) => createMenuItem('markRead', '标记为已读', 'MarkRead', onClick),
+  leaveRoom: (onClick: () => void) => createMenuItem('leaveRoom', '退出聊天室', 'Exit', onClick, { color: 'danger' }),
 };

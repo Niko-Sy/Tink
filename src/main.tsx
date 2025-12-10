@@ -11,6 +11,8 @@ import App from './App.tsx'
 import Login from './pages/Login.tsx'
 import Profile from './pages/Profile.tsx'
 import UserProfile from './pages/UserProfile.tsx'
+import Help from './pages/Help.tsx'
+import Feedback from './pages/Feedback.tsx'
 import { AuthProvider, useAuth } from './context/AuthContext.tsx'
 import ProtectedRoute from './components/ProtectedRoute.tsx'
 
@@ -52,6 +54,22 @@ createRoot(document.getElementById('root')!).render(
             element={
               <ProtectedRoute>
                 <UserProfile viewMode="other" />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/help" 
+            element={
+              <ProtectedRoute>
+                <Help />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/feedback" 
+            element={
+              <ProtectedRoute>
+                <Feedback />
               </ProtectedRoute>
             } 
           />
