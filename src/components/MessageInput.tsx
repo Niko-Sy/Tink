@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { SendOutlined, SmileOutlined } from '@ant-design/icons';
+import { Input } from 'antd';
 import MentionInput from './MentionInput';
 import type { User, Message } from '../types';
 
 interface MessageInputProps {
+  conversationKind?: 'group' | 'direct';
+  showPermissionNotice?: boolean;
   inputValue: string;
   onInputChange: (value: string) => void;
   onSend: () => void;
@@ -21,6 +24,8 @@ interface MessageInputProps {
  * 包含禁言提示、回复提示、表情面板和输入框
  */
 const MessageInput: React.FC<MessageInputProps> = ({
+  conversationKind = 'group',
+  showPermissionNotice = true,
   inputValue,
   onInputChange,
   onSend,
@@ -68,7 +73,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   return (
     <div className="border-gray-800 bg-ground p-4">
       {/* 禁言提示 */}
-      {!canSendMessage && (
+      {!canSendMessage && showPermissionNotice && (
         <div className="mb-3 p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg text-yellow-400 text-sm">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -124,7 +129,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
         >
           <SmileOutlined className="text-xl" />
         </button>
-        <MentionInput
+        {conversationKind === 'direct' ? <Input.TextArea aria-label="私信内容" autoSize={{ minRows: 1, maxRows: 5 }} value={inputValue} onChange={e => onInputChange(e.target.value)} disabled={!canSendMessage} placeholder="输入私信…" onPressEnter={e => { if (!e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); onSend(); } }} /> : <MentionInput
           value={inputValue}
           onChange={onInputChange}
           onSend={onSend}
@@ -141,13 +146,14 @@ const MessageInput: React.FC<MessageInputProps> = ({
               ? 'opacity-50 cursor-not-allowed' 
               : ''
           }`}
-        />
+        />}
         <button
           className={`w-12 h-12 text-white/80 p-3 rounded-full transition-colors rounded-button whitespace-nowrap focus:outline-none align-center flex items-center justify-center ${
             !canSendMessage
               ? 'bg-gray-600 cursor-not-allowed opacity-50'
               : 'bg-blue-600 hover:bg-blue-700'
           }`}
+          aria-label={conversationKind === 'direct' ? '发送私信' : '发送消息'}
           onClick={onSend}
           disabled={!canSendMessage}
         >

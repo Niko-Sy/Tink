@@ -9,21 +9,21 @@ export interface User {
   phone?: string;
   email?: string;
   signature?: string;
-  onlineStatus?: 'online' | 'away' | 'busy' | 'offline';
-  accountStatus?: 'active' | 'inactive' | 'suspended';
-  
+  onlineStatus?: "online" | "away" | "busy" | "offline";
+  accountStatus?: "active" | "inactive" | "suspended";
+
   // 全局系统角色（影响整个系统的权限）
-  systemRole?: 'super_admin' | 'user';
-  
+  systemRole?: "super_admin" | "user";
+
   registerTime?: string;
   lastloginTime?: string;
-  
+
   // 全局禁言状态（超级管理员设置）
-  globalMuteStatus?: 'muted' | 'unmuted';
+  globalMuteStatus?: "muted" | "unmuted";
   globalMuteEndTime?: string;
-  
+
   // 聊天室成员信息（当用户在聊天室列表中时）
-  roomRole?: 'owner' | 'admin' | 'member';
+  roomRole?: "owner" | "admin" | "member";
   isMuted?: boolean;
   muteUntil?: string | null;
   memberId?: string;
@@ -36,7 +36,7 @@ export interface Message {
   userId: string; // 改为string类型,与User的userId一致
   userName?: string; // 添加用户名字段,用于前端显示
   quotedMessageId?: string; // 引用的消息ID（用于回复功能）
-  type: 'text' | 'image' | 'file' | 'system' | 'system_notification';  // 添加 system_notification
+  type: "text" | "image" | "file" | "system" | "system_notification"; // 添加 system_notification
   text: string;
   time: string;
   isOwn: boolean;
@@ -44,11 +44,12 @@ export interface Message {
 
 // 聊天室接口
 export interface ChatRoom {
+  canInvite?: boolean;
   roomId: string;
   name: string;
   description: string;
   icon: string;
-  type: 'public' | 'private' | 'protected';
+  type: "public" | "private" | "protected";
   password?: string;
   creatorId?: string; // 创建者ID
   onlineCount: number;
@@ -56,7 +57,7 @@ export interface ChatRoom {
   createdTime: string;
   lastMessageTime: string;
   unread: number;
-  
+
   // 可选：当前用户在该聊天室的成员信息
   currentUserMember?: ChatRoomMember;
 }
@@ -66,14 +67,14 @@ export interface ChatRoomMember {
   memberId: string;
   roomId: string;
   userId: string;
-  
+
   // 聊天室内角色（只影响该聊天室的权限）
-  roomRole: 'owner' | 'admin' | 'member';
-  
+  roomRole: "owner" | "admin" | "member";
+
   // 聊天室内禁言状态
   isMuted: boolean;
   muteUntil?: string; // 禁言到期时间
-  
+
   joinedAt: string;
   lastReadAt?: string;
   isActive: boolean; // 是否还在聊天室
@@ -95,36 +96,36 @@ export interface MuteRecord {
 // 权限常量（使用 const 对象代替 enum 以兼容 isolatedModules）
 export const Permission = {
   // 消息相关
-  SEND_MESSAGE: 'send_message',
-  EDIT_OWN_MESSAGE: 'edit_own_message',
-  DELETE_OWN_MESSAGE: 'delete_own_message',
-  EDIT_ANY_MESSAGE: 'edit_any_message',
-  DELETE_ANY_MESSAGE: 'delete_any_message',
-  PIN_MESSAGE: 'pin_message',
-  
+  SEND_MESSAGE: "send_message",
+  EDIT_OWN_MESSAGE: "edit_own_message",
+  DELETE_OWN_MESSAGE: "delete_own_message",
+  EDIT_ANY_MESSAGE: "edit_any_message",
+  DELETE_ANY_MESSAGE: "delete_any_message",
+  PIN_MESSAGE: "pin_message",
+
   // 成员管理
-  INVITE_MEMBER: 'invite_member',
-  REMOVE_MEMBER: 'remove_member',
-  MUTE_MEMBER: 'mute_member',
-  UNMUTE_MEMBER: 'unmute_member',
-  
+  INVITE_MEMBER: "invite_member",
+  REMOVE_MEMBER: "remove_member",
+  MUTE_MEMBER: "mute_member",
+  UNMUTE_MEMBER: "unmute_member",
+
   // 聊天室管理
-  EDIT_ROOM_INFO: 'edit_room_info',
-  DELETE_ROOM: 'delete_room',
-  SET_ADMIN: 'set_admin',
-  REMOVE_ADMIN: 'remove_admin',
-  
+  EDIT_ROOM_INFO: "edit_room_info",
+  DELETE_ROOM: "delete_room",
+  SET_ADMIN: "set_admin",
+  REMOVE_ADMIN: "remove_admin",
+
   // 文件管理
-  UPLOAD_FILE: 'upload_file',
-  DELETE_OWN_FILE: 'delete_own_file',
-  DELETE_ANY_FILE: 'delete_any_file',
+  UPLOAD_FILE: "upload_file",
+  DELETE_OWN_FILE: "delete_own_file",
+  DELETE_ANY_FILE: "delete_any_file",
 } as const;
 
-export type Permission = typeof Permission[keyof typeof Permission];
+export type Permission = (typeof Permission)[keyof typeof Permission];
 
 // 角色权限映射
 export const RolePermissions: Record<
-  'owner' | 'admin' | 'member',
+  "owner" | "admin" | "member",
   Permission[]
 > = {
   owner: [
@@ -173,3 +174,13 @@ export const RolePermissions: Record<
     Permission.DELETE_OWN_FILE,
   ],
 };
+
+export type {
+  PublicUserProfile,
+  FriendContact,
+  FriendRequest,
+  Relationship,
+  SocialCapabilities,
+  SocialSummary,
+} from "./social";
+export type { ActiveView } from "./conversation";

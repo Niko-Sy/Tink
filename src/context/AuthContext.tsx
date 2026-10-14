@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
-import type { ChatRoomMember, User as UserType } from '../types';
+import { AuthContext } from './auth';
+import type { AuthContextType, AuthUser as User } from './auth';
+import type { ChatRoomMember } from '../types';
 import { 
   authService, 
   userService,
@@ -10,41 +12,6 @@ import {
 import type { ApiError } from '../services';
 import { DEFAULT_AVATAR_URL } from '../config/constants';
 import type { LoginRequest, RegisterRequest } from '../services';
-
-// 使用types中的User接口，扩展登录相关字段
-interface User extends UserType {
-  token?: string;
-  loginTime?: string;
-}
-
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-  // 登录/注册/登出
-  login: (credentials: LoginRequest) => Promise<boolean>;
-  register: (data: RegisterRequest) => Promise<boolean>;
-  logout: () => Promise<void>;
-  // 清除错误
-  clearError: () => void;
-  // 刷新用户信息
-  refreshUserInfo: () => Promise<void>;
-  isAuthenticated: boolean;
-  // 聊天室成员信息管理
-  currentRoomMember: ChatRoomMember | null;
-  setCurrentRoomMember: (member: ChatRoomMember | null) => void;
-  getCurrentRoomMember: (roomId: string) => ChatRoomMember | null;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
 
 interface AuthProviderProps {
   children: ReactNode;

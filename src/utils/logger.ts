@@ -3,7 +3,7 @@
  * 在生产环境自动禁用 console.log，避免敏感信息泄露
  */
 
-import { IS_DEV } from '../config/constants';
+import { IS_DEV } from "../config/constants";
 
 class Logger {
   private isEnabled: boolean;
@@ -15,7 +15,7 @@ class Logger {
   /**
    * 普通日志
    */
-  log(...args: any[]): void {
+  log(...args: unknown[]): void {
     if (this.isEnabled) {
       console.log(...args);
     }
@@ -24,7 +24,7 @@ class Logger {
   /**
    * 信息日志
    */
-  info(...args: any[]): void {
+  info(...args: unknown[]): void {
     if (this.isEnabled) {
       console.info(...args);
     }
@@ -33,7 +33,7 @@ class Logger {
   /**
    * 警告日志
    */
-  warn(...args: any[]): void {
+  warn(...args: unknown[]): void {
     if (this.isEnabled) {
       console.warn(...args);
     }
@@ -42,14 +42,14 @@ class Logger {
   /**
    * 错误日志（生产环境也显示）
    */
-  error(...args: any[]): void {
+  error(...args: unknown[]): void {
     console.error(...args);
   }
 
   /**
    * 调试日志
    */
-  debug(...args: any[]): void {
+  debug(...args: unknown[]): void {
     if (this.isEnabled) {
       console.debug(...args);
     }
@@ -76,7 +76,7 @@ class Logger {
   /**
    * 表格日志
    */
-  table(data: any): void {
+  table(data: unknown): void {
     if (this.isEnabled) {
       console.table(data);
     }

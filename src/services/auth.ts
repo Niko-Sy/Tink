@@ -1,3 +1,4 @@
+import { refreshAccessToken } from "./api";
 /**
  * 认证相关 API
  * - 用户登录
@@ -7,15 +8,15 @@
  * - 修改密码
  */
 
-import { apiRequest, tokenManager } from './api';
-import type { ApiResponse } from './api';
-import type { User } from '../types';
+import { apiRequest, tokenManager } from "./api";
+import type { ApiResponse } from "./api";
+import type { User } from "../types";
 
 // ==================== 请求/响应类型定义 ====================
 
 // 登录请求
 export interface LoginRequest {
-  username: string;  // 用户名或邮箱
+  username: string; // 用户名或邮箱
   password: string;
 }
 
@@ -24,15 +25,15 @@ export interface LoginResponse {
   user: User;
   token: string;
   refreshToken: string;
-  expiresAt: string;
+  expiresIn?: number;
 }
 
 // 注册请求
 export interface RegisterRequest {
-  username: string;  // 3-20字符，仅字母数字下划线
-  password: string;  // 6-20字符
+  username: string; // 3-20字符，仅字母数字下划线
+  password: string; // 6-20字符
   email: string;
-  nickname?: string;  // 可选昵称
+  nickname?: string; // 可选昵称
 }
 
 // 注册响应 - 与登录响应相同
@@ -47,7 +48,8 @@ export interface ChangePasswordRequest {
 // 刷新 Token 响应
 export interface RefreshTokenResponse {
   token: string;
-  expiresAt: string;
+  refreshToken: string;
+  expiresIn: number;
 }
 
 // ==================== API 函数 ====================
@@ -56,16 +58,18 @@ export interface RefreshTokenResponse {
  * 用户登录
  * POST /auth/login
  */
-export const login = async (data: LoginRequest): Promise<ApiResponse<LoginResponse>> => {
-  const response = await apiRequest.post<LoginResponse>('/auth/login', data);
-  
+export const login = async (
+  data: LoginRequest,
+): Promise<ApiResponse<LoginResponse>> => {
+  const response = await apiRequest.post<LoginResponse>("/auth/login", data);
+
   // 保存 Token
   if (response.code === 200 && response.data) {
     tokenManager.setToken(response.data.token);
     tokenManager.setRefreshToken(response.data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
+    localStorage.setItem("user", JSON.stringify(response.data.user));
   }
-  
+
   return response;
 };
 
@@ -73,16 +77,21 @@ export const login = async (data: LoginRequest): Promise<ApiResponse<LoginRespon
  * 用户注册
  * POST /auth/register
  */
-export const register = async (data: RegisterRequest): Promise<ApiResponse<RegisterResponse>> => {
-  const response = await apiRequest.post<RegisterResponse>('/auth/register', data);
-  
+export const register = async (
+  data: RegisterRequest,
+): Promise<ApiResponse<RegisterResponse>> => {
+  const response = await apiRequest.post<RegisterResponse>(
+    "/auth/register",
+    data,
+  );
+
   // 注册成功后自动保存 Token
   if (response.code === 200 && response.data) {
     tokenManager.setToken(response.data.token);
     tokenManager.setRefreshToken(response.data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
+    localStorage.setItem("user", JSON.stringify(response.data.user));
   }
-  
+
   return response;
 };
 
@@ -92,7 +101,7 @@ export const register = async (data: RegisterRequest): Promise<ApiResponse<Regis
  */
 export const logout = async (): Promise<ApiResponse<null>> => {
   try {
-    const response = await apiRequest.get<null>('/auth/logout');
+    const response = await apiRequest.get<null>("/auth/logout");
     return response;
   } finally {
     // 无论成功失败都清除本地 Token
@@ -104,22 +113,18 @@ export const logout = async (): Promise<ApiResponse<null>> => {
  * 刷新 Token
  * GET /auth/refresh
  */
-export const refreshToken = async (): Promise<ApiResponse<RefreshTokenResponse>> => {
-  const response = await apiRequest.get<RefreshTokenResponse>('/auth/refresh');
-  
-  if (response.code === 200 && response.data) {
-    tokenManager.setToken(response.data.token);
-  }
-  
-  return response;
-};
+export const refreshToken = async (): Promise<
+  ApiResponse<RefreshTokenResponse>
+> => refreshAccessToken();
 
 /**
  * 修改密码
  * POST /auth/changepwd
  */
-export const changePassword = async (data: ChangePasswordRequest): Promise<ApiResponse<null>> => {
-  return apiRequest.post<null>('/auth/changepwd', data);
+export const changePassword = async (
+  data: ChangePasswordRequest,
+): Promise<ApiResponse<null>> => {
+  return apiRequest.post<null>("/auth/changepwd", data);
 };
 
 // ==================== 辅助函数 ====================
@@ -136,7 +141,7 @@ export const isAuthenticated = (): boolean => {
  * 获取存储的用户信息
  */
 export const getStoredUser = (): User | null => {
-  const userStr = localStorage.getItem('user');
+  const userStr = localStorage.getItem("user");
   if (userStr) {
     try {
       return JSON.parse(userStr) as User;

@@ -1,5 +1,10 @@
-import React from 'react';
-import { PlusOutlined, LoginOutlined, UserAddOutlined } from '@ant-design/icons';
+import { useSocial } from "../hooks/useSocial";
+import React from "react";
+import {
+  PlusOutlined,
+  LoginOutlined,
+  UserAddOutlined,
+} from "@ant-design/icons";
 
 interface HomePageProps {
   onCreateRoom: () => void;
@@ -10,14 +15,17 @@ interface HomePageProps {
 const HomePage: React.FC<HomePageProps> = ({
   onCreateRoom,
   onJoinRoom,
-  onInviteFriend
+  onInviteFriend,
 }) => {
+  const social = useSocial();
   return (
     <div className="flex-1 flex items-center justify-center bg-ground">
       <div className="max-w-4xl w-full px-8">
         {/* 欢迎标题 */}
         <div className="text-center mb-12 animate-fade-in">
-          <h1 className="text-4xl font-bold text-white mb-3">欢迎来到 Tink ChatRoom</h1>
+          <h1 className="text-4xl font-bold text-white mb-3">
+            欢迎来到 Tink ChatRoom
+          </h1>
           <p className="text-gray-400 text-lg">开始你的聊天之旅</p>
         </div>
 
@@ -61,7 +69,14 @@ const HomePage: React.FC<HomePageProps> = ({
 
           {/* 邀请好友 */}
           <button
+            aria-label="首页邀请好友"
             onClick={onInviteFriend}
+            disabled={!social.capabilities?.roomInvitations}
+            title={
+              social.capabilities?.roomInvitations
+                ? "邀请好友"
+                : "邀请功能暂未启用"
+            }
             className="group relative bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white rounded-2xl p-8 transition-all duration-300 transform hover:scale-105 hover:shadow-2xl focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50 animate-slide-in-right"
           >
             <div className="flex flex-col items-center space-y-4">
@@ -81,8 +96,19 @@ const HomePage: React.FC<HomePageProps> = ({
         {/* 底部提示信息 */}
         <div className="mt-12 text-center animate-slide-in-bottom">
           <div className="inline-flex items-center space-x-2 bg-gray-800 rounded-full px-6 py-3 text-gray-400">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <span className="text-sm">点击左侧已有聊天室开始聊天</span>
           </div>

@@ -100,6 +100,7 @@ export interface LeaveRoomRequest {
 
 // 聊天室列表项（带用户相关信息）
 export interface ChatRoomListItem {
+ canInvite:boolean;
   roomId: string;
   name: string;
   description: string;

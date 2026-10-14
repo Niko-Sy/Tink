@@ -7,6 +7,7 @@ export interface MenuItem {
   color?: 'default' | 'warning' | 'danger';
   onClick: () => void;
   hidden?: boolean;
+  disabled?: boolean;
   type?: 'item';
 }
 
@@ -92,6 +93,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
 
   return (
     <div
+      data-testid="context-menu"
       className="fixed bg-gray-800 border border-gray-700 rounded-lg shadow-lg  z-50 min-w-[130px] animate-expand-menu"
       style={{ left: `${position.x+10}px`, top: `${position.y+10}px` }}
       onClick={(e) => e.stopPropagation()}
@@ -111,6 +113,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
         return (
           <button
             key={menuItem.id}
+            disabled={menuItem.disabled}
+            aria-disabled={menuItem.disabled}
             className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-700 transition-colors flex items-center space-x-2 bg-transparent border-0 ${getColorClass(menuItem.color)}`}
             onClick={(e) => {
               e.stopPropagation();

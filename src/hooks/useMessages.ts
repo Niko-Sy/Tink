@@ -3,13 +3,9 @@
  * 负责消息的获取、发送和管理
  */
 
-import { useState, useCallback, useRef } from 'react';
-import type { Message, User } from '../types';
-import { 
-  messageService,
-  wsClient,
-  type ApiError,
-} from '../services';
+import { useState, useCallback, useRef } from "react";
+import type { Message, User } from "../types";
+import { messageService, wsClient, type ApiError } from "../services";
 
 export interface UseMessagesReturn {
   roomMessages: Record<string, Message[]>;
@@ -18,7 +14,11 @@ export interface UseMessagesReturn {
   hasMoreMessages: Record<string, boolean>;
   fetchMessages: (roomId: string, force?: boolean) => Promise<void>;
   fetchMoreMessages: (roomId: string) => Promise<void>;
-  sendMessage: (roomId: string, text: string, replyTo?: string) => Promise<void>;
+  sendMessage: (
+    roomId: string,
+    text: string,
+    replyTo?: string,
+  ) => Promise<void>;
   addMessageToRoom: (roomId: string, message: Message) => void;
   updateMessage: (roomId: string, messageId: string, text: string) => void;
   deleteMessage: (roomId: string, messageId: string) => void;
@@ -34,106 +34,135 @@ export const useMessages = ({
   user,
   onError,
 }: UseMessagesOptions): UseMessagesReturn => {
-  const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>({});
+  const [roomMessages, setRoomMessages] = useState<Record<string, Message[]>>(
+    {},
+  );
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoadingMoreMessages, setIsLoadingMoreMessages] = useState(false);
-  const [hasMoreMessages, setHasMoreMessages] = useState<Record<string, boolean>>({});
+  const [hasMoreMessages, setHasMoreMessages] = useState<
+    Record<string, boolean>
+  >({});
   const loadedRoomsRef = useRef<Set<string>>(new Set());
 
   // 获取聊天室消息历史
-  const fetchMessages = useCallback(async (roomId: string, force = false) => {
-    if (!user || roomId === '100000001') {
-      return;
-    }
-    
-    // 使用 ref 检查是否已加载，避免重复请求（除非强制刷新）
-    if (!force && loadedRoomsRef.current.has(roomId)) {
-      console.log(`[useMessages] 聊天室 ${roomId} 消息已加载，跳过重复请求`);
-      return;
-    }
-    
-    console.log(`[useMessages] 获取聊天室 ${roomId} 的消息历史`);
-    setIsLoadingMessages(true);
-    try {
-      const response = await messageService.getMessageHistory(roomId, { pageSize: 50 });
-      console.log(`[useMessages] 消息历史响应:`, response);
-      
-      if (response.code === 200 && response.data) {
-        // 后端返回的是 data.messages，兼容 data.list
-        const messageList = response.data.messages || response.data.list || [];
-        console.log(`[useMessages] 解析到的消息列表:`, messageList);
-        
-        if (!Array.isArray(messageList)) {
-          console.warn(`[useMessages] 消息列表格式错误:`, messageList);
-          setIsLoadingMessages(false);
-          return;
-        }
-        
-        // 将 MessageListItem 转换为 Message 格式
-        const fetchedMessages: Message[] = messageList.map(item => ({
-          messageId: item.messageId,
-          roomId: item.roomId || roomId,
-          userId: item.userId,
-          userName: item.userName || item.nickname || item.username || '未知用户',
-          quotedMessageId: item.replyToMessageId || item.replyTo?.messageId,  // 后端返回 replyToMessageId，兼容旧格式 replyTo.messageId
-          type: item.type as Message['type'],
-          text: item.text || '',
-          time: item.time || item.createdTime || new Date().toISOString(),
-          isOwn: item.isOwn !== undefined ? item.isOwn : (item.userId === user.userId),
-        }));
-        
-        console.log(`[useMessages] 转换后的消息:`, fetchedMessages);
-        
-        // 按时间排序（从旧到新）
-        fetchedMessages.sort((a, b) => {
-          const timeA = new Date(a.time).getTime();
-          const timeB = new Date(b.time).getTime();
-          return timeA - timeB;
-        });
-        
-        setRoomMessages(prev => ({
-          ...prev,
-          [roomId]: fetchedMessages,
-        }));
-        
-        // 标记为已加载
-        loadedRoomsRef.current.add(roomId);
-        console.log(`[useMessages] 聊天室 ${roomId} 加载了 ${fetchedMessages.length} 条消息`);
-      } else {
-        console.warn(`[useMessages] 获取消息历史失败:`, response.message);
+  const fetchMessages = useCallback(
+    async (roomId: string, force = false) => {
+      if (!user || roomId === "home") {
+        return;
       }
-    } catch (err) {
-      console.error('[useMessages] 获取消息历史失败:', err);
-    } finally {
-      setIsLoadingMessages(false);
-    }
-  }, [user]);
+
+      // 使用 ref 检查是否已加载，避免重复请求（除非强制刷新）
+      if (!force && loadedRoomsRef.current.has(roomId)) {
+        console.log(`[useMessages] 聊天室 ${roomId} 消息已加载，跳过重复请求`);
+        return;
+      }
+
+      console.log(`[useMessages] 获取聊天室 ${roomId} 的消息历史`);
+      setIsLoadingMessages(true);
+      try {
+        const response = await messageService.getMessageHistory(roomId, {
+          pageSize: 50,
+        });
+        console.log(`[useMessages] 消息历史响应:`, response);
+
+        if (response.code === 200 && response.data) {
+          // 后端返回的是 data.messages，兼容 data.list
+          const messageList =
+            response.data.messages || response.data.list || [];
+          console.log(`[useMessages] 解析到的消息列表:`, messageList);
+
+          if (!Array.isArray(messageList)) {
+            console.warn(`[useMessages] 消息列表格式错误:`, messageList);
+            setIsLoadingMessages(false);
+            return;
+          }
+
+          // 将 MessageListItem 转换为 Message 格式
+          const fetchedMessages: Message[] = messageList.map((item) => ({
+            messageId: item.messageId,
+            roomId: item.roomId || roomId,
+            userId: item.userId,
+            userName:
+              item.userName || item.nickname || item.username || "未知用户",
+            quotedMessageId: item.replyToMessageId || item.replyTo?.messageId, // 后端返回 replyToMessageId，兼容旧格式 replyTo.messageId
+            type: item.type as Message["type"],
+            text: item.text || "",
+            time: item.time || item.createdTime || new Date().toISOString(),
+            isOwn:
+              item.isOwn !== undefined
+                ? item.isOwn
+                : item.userId === user.userId,
+          }));
+
+          console.log(`[useMessages] 转换后的消息:`, fetchedMessages);
+
+          // 按时间排序（从旧到新）
+          fetchedMessages.sort((a, b) => {
+            const timeA = new Date(a.time).getTime();
+            const timeB = new Date(b.time).getTime();
+            return timeA - timeB;
+          });
+
+          setRoomMessages((prev) => ({
+            ...prev,
+            [roomId]: fetchedMessages,
+          }));
+
+          // 标记为已加载
+          loadedRoomsRef.current.add(roomId);
+          console.log(
+            `[useMessages] 聊天室 ${roomId} 加载了 ${fetchedMessages.length} 条消息`,
+          );
+        } else {
+          console.warn(`[useMessages] 获取消息历史失败:`, response.message);
+        }
+      } catch (err) {
+        console.error("[useMessages] 获取消息历史失败:", err);
+      } finally {
+        setIsLoadingMessages(false);
+      }
+    },
+    [user],
+  );
 
   // 添加新消息到聊天室（需要先定义，因为会被其他函数使用）
   const addMessageToRoom = useCallback((roomId: string, message: Message) => {
-    console.log('[useMessages] 添加消息到房间:', { roomId, messageId: message.messageId });
-    setRoomMessages(prev => {
+    console.log("[useMessages] 添加消息到房间:", {
+      roomId,
+      messageId: message.messageId,
+    });
+    setRoomMessages((prev) => {
       const currentMessages = prev[roomId] || [];
-      
+
       // 检查消息是否已存在
-      const exists = currentMessages.some(m => m.messageId === message.messageId);
+      const exists = currentMessages.some(
+        (m) => m.messageId === message.messageId,
+      );
       if (exists) {
-        console.log('[useMessages] 消息已存在，跳过添加:', message.messageId);
+        console.log("[useMessages] 消息已存在，跳过添加:", message.messageId);
         return prev;
       }
-      
+
       // 如果是真实消息（非临时），检查是否需要替换临时消息
-      if (!message.messageId.startsWith('temp_')) {
+      if (!message.messageId.startsWith("temp_")) {
         // 查找可能的临时消息（同一用户、同一文本内容、时间接近）
-        const tempMessageIndex = currentMessages.findIndex(m => 
-          m.messageId.startsWith('temp_') && 
-          m.userId === message.userId && 
-          m.text === message.text &&
-          Math.abs(new Date(m.time).getTime() - new Date(message.time).getTime()) < 10000 // 10秒内
+        const tempMessageIndex = currentMessages.findIndex(
+          (m) =>
+            m.messageId.startsWith("temp_") &&
+            m.userId === message.userId &&
+            m.text === message.text &&
+            Math.abs(
+              new Date(m.time).getTime() - new Date(message.time).getTime(),
+            ) < 10000, // 10秒内
         );
-        
+
         if (tempMessageIndex !== -1) {
-          console.log('[useMessages] 找到临时消息，替换为真实消息:', currentMessages[tempMessageIndex].messageId, '->', message.messageId);
+          console.log(
+            "[useMessages] 找到临时消息，替换为真实消息:",
+            currentMessages[tempMessageIndex].messageId,
+            "->",
+            message.messageId,
+          );
           // 替换临时消息
           const updatedMessages = [...currentMessages];
           updatedMessages[tempMessageIndex] = message;
@@ -143,7 +172,7 @@ export const useMessages = ({
           };
         }
       }
-      
+
       return {
         ...prev,
         [roomId]: [...currentMessages, message],
@@ -152,195 +181,228 @@ export const useMessages = ({
   }, []);
 
   // 通过 HTTP 发送消息
-  const sendMessageViaHttp = useCallback(async (roomId: string, text: string, quotedMsgId?: string) => {
-    if (!user) {
-      console.log('[useMessages] HTTP发送失败: 用户未登录');
-      return;
-    }
-    
-    console.log('[useMessages] 通过 HTTP 发送消息:', { roomId, text, quotedMessageId: quotedMsgId });
-    try {
-      const response = await messageService.sendMessage(roomId, {
-        type: 'text',
-        text,
-        quotedMessageId: quotedMsgId,  // 使用quotedMessageId而不是replyToMessageId
-      });
-      console.log('[useMessages] HTTP 响应:', response);
-      
-      if (response.code === 200) {
-        console.log('[useMessages] HTTP 发送成功');
-        // 立即添加消息到本地（乐观更新）
-        // 如果后续收到 WebSocket 广播的相同消息，会被去重逻辑过滤
-        const messageData = response.data;
-        if (messageData && messageData.messageId) {
-          const newMessage: Message = {
-            messageId: messageData.messageId,
-            roomId: roomId,
-            userId: user.userId,
-            userName: user.nickname || user.username || '我',
-            quotedMessageId: quotedMsgId,  // 引用的消息ID
-            type: 'text',
-            text: text,
-            time: messageData.sendTime || new Date().toISOString(),
-            isOwn: true,
-          };
-          console.log('[useMessages] 添加本地消息:', newMessage);
-          addMessageToRoom(roomId, newMessage);
-        }
-      } else {
-        onError?.('发送失败', response.message || '无法发送消息', 2);
-        throw new Error(response.message);
+  const sendMessageViaHttp = useCallback(
+    async (roomId: string, text: string, quotedMsgId?: string) => {
+      if (!user) {
+        console.log("[useMessages] HTTP发送失败: 用户未登录");
+        return;
       }
-    } catch (err) {
-      const apiError = err as ApiError;
-      onError?.('发送失败', apiError.message || '发送消息时发生错误', 2);
-      throw err;
-    }
-  }, [user, onError, addMessageToRoom]);
+
+      console.log("[useMessages] 通过 HTTP 发送消息:", {
+        roomId,
+        text,
+        quotedMessageId: quotedMsgId,
+      });
+      try {
+        const response = await messageService.sendMessage(roomId, {
+          type: "text",
+          text,
+          quotedMessageId: quotedMsgId, // 使用quotedMessageId而不是replyToMessageId
+        });
+        console.log("[useMessages] HTTP 响应:", response);
+
+        if (response.code === 200) {
+          console.log("[useMessages] HTTP 发送成功");
+          // 立即添加消息到本地（乐观更新）
+          // 如果后续收到 WebSocket 广播的相同消息，会被去重逻辑过滤
+          const messageData = response.data;
+          if (messageData && messageData.messageId) {
+            const newMessage: Message = {
+              messageId: messageData.messageId,
+              roomId: roomId,
+              userId: user.userId,
+              userName: user.nickname || user.username || "我",
+              quotedMessageId: quotedMsgId, // 引用的消息ID
+              type: "text",
+              text: text,
+              time: messageData.sendTime || new Date().toISOString(),
+              isOwn: true,
+            };
+            console.log("[useMessages] 添加本地消息:", newMessage);
+            addMessageToRoom(roomId, newMessage);
+          }
+        } else {
+          onError?.("发送失败", response.message || "无法发送消息", 2);
+          throw new Error(response.message);
+        }
+      } catch (err) {
+        const apiError = err as ApiError;
+        onError?.("发送失败", apiError.message || "发送消息时发生错误", 2);
+        throw err;
+      }
+    },
+    [user, onError, addMessageToRoom],
+  );
 
   // 发送消息
-  const sendMessage = useCallback(async (roomId: string, text: string, quotedMsgId?: string) => {
-    console.log('[useMessages] 准备发送消息:', { roomId, text, quotedMessageId: quotedMsgId, isWSConnected: wsClient.isConnected });
-    
-    // 优先使用 WebSocket 发送
-    if (wsClient.isConnected) {
-      console.log('[useMessages] 使用 WebSocket 发送消息');
-      const sent = wsClient.sendChatMessage(roomId, text, 'text', quotedMsgId);
-      console.log('[useMessages] WebSocket 发送结果:', sent);
-      if (!sent) {
-        // WebSocket 发送失败，回退到 HTTP
-        console.log('[useMessages] WebSocket 发送失败，回退到 HTTP');
-        await sendMessageViaHttp(roomId, text, quotedMsgId);
+  const sendMessage = useCallback(
+    async (roomId: string, text: string, quotedMsgId?: string) => {
+      console.log("[useMessages] 准备发送消息:", {
+        roomId,
+        text,
+        quotedMessageId: quotedMsgId,
+        isWSConnected: wsClient.isConnected,
+      });
+
+      // 优先使用 WebSocket 发送
+      if (wsClient.isConnected) {
+        console.log("[useMessages] 使用 WebSocket 发送消息");
+        const sent = wsClient.sendChatMessage(
+          roomId,
+          text,
+          "text",
+          quotedMsgId,
+        );
+        console.log("[useMessages] WebSocket 发送结果:", sent);
+        if (!sent) {
+          // WebSocket 发送失败，回退到 HTTP
+          console.log("[useMessages] WebSocket 发送失败，回退到 HTTP");
+          await sendMessageViaHttp(roomId, text, quotedMsgId);
+        } else {
+          // WebSocket 发送成功，立即添加临时消息（乐观更新）
+          // 使用临时ID，等待服务器广播真实消息后会被替换
+          const tempMessage: Message = {
+            messageId: `temp_${Date.now()}_${Math.random()}`,
+            roomId: roomId,
+            userId: user!.userId,
+            userName: user!.nickname || user!.username || "我",
+            quotedMessageId: quotedMsgId, // 引用的消息ID
+            type: "text",
+            text: text,
+            time: new Date().toISOString(),
+            isOwn: true,
+          };
+          console.log("[useMessages] 添加临时消息:", tempMessage);
+          addMessageToRoom(roomId, tempMessage);
+        }
       } else {
-        // WebSocket 发送成功，立即添加临时消息（乐观更新）
-        // 使用临时ID，等待服务器广播真实消息后会被替换
-        const tempMessage: Message = {
-          messageId: `temp_${Date.now()}_${Math.random()}`,
-          roomId: roomId,
-          userId: user!.userId,
-          userName: user!.nickname || user!.username || '我',
-          quotedMessageId: quotedMsgId,  // 引用的消息ID
-          type: 'text',
-          text: text,
-          time: new Date().toISOString(),
-          isOwn: true,
-        };
-        console.log('[useMessages] 添加临时消息:', tempMessage);
-        addMessageToRoom(roomId, tempMessage);
+        // WebSocket 未连接，使用 HTTP 发送
+        console.log("[useMessages] WebSocket 未连接，使用 HTTP 发送");
+        await sendMessageViaHttp(roomId, text, quotedMsgId);
       }
-    } else {
-      // WebSocket 未连接，使用 HTTP 发送
-      console.log('[useMessages] WebSocket 未连接，使用 HTTP 发送');
-      await sendMessageViaHttp(roomId, text, quotedMsgId);
-    }
-  }, [sendMessageViaHttp, user, addMessageToRoom]);
+    },
+    [sendMessageViaHttp, user, addMessageToRoom],
+  );
 
   // 更新消息
-  const updateMessage = useCallback((roomId: string, messageId: string, text: string) => {
-    setRoomMessages(prev => ({
-      ...prev,
-      [roomId]: (prev[roomId] || []).map(m => 
-        m.messageId === messageId 
-          ? { ...m, text }
-          : m
-      ),
-    }));
-  }, []);
+  const updateMessage = useCallback(
+    (roomId: string, messageId: string, text: string) => {
+      setRoomMessages((prev) => ({
+        ...prev,
+        [roomId]: (prev[roomId] || []).map((m) =>
+          m.messageId === messageId ? { ...m, text } : m,
+        ),
+      }));
+    },
+    [],
+  );
 
   // 删除消息
   const deleteMessage = useCallback((roomId: string, messageId: string) => {
-    setRoomMessages(prev => ({
+    setRoomMessages((prev) => ({
       ...prev,
-      [roomId]: (prev[roomId] || []).filter(m => m.messageId !== messageId),
+      [roomId]: (prev[roomId] || []).filter((m) => m.messageId !== messageId),
     }));
   }, []);
 
   // 加载更多历史消息（游标分页）
-  const fetchMoreMessages = useCallback(async (roomId: string) => {
-    if (!user || roomId === '100000001' || isLoadingMoreMessages) {
-      return;
-    }
-    
-    const currentMessages = roomMessages[roomId] || [];
-    if (currentMessages.length === 0) {
-      console.log('[useMessages] 没有消息，无法加载更多');
-      return;
-    }
-    
-    // 检查是否还有更多消息
-    if (hasMoreMessages[roomId] === false) {
-      console.log('[useMessages] 没有更多历史消息了');
-      return;
-    }
-    
-    // 获取最早的消息ID作为游标
-    const oldestMessageId = currentMessages[0].messageId;
-    console.log(`[useMessages] 加载房间 ${roomId} 更多历史消息，游标: ${oldestMessageId}`);
-    
-    setIsLoadingMoreMessages(true);
-    try {
-      const response = await messageService.getMessageHistory(roomId, {
-        before: oldestMessageId,
-        pageSize: 50,
-      });
-      
-      if (response.code === 200 && response.data) {
-        const messageList = response.data.messages || response.data.list || [];
-        
-        if (!Array.isArray(messageList) || messageList.length === 0) {
-          console.log('[useMessages] 没有更多历史消息');
-          setHasMoreMessages(prev => ({ ...prev, [roomId]: false }));
-          setIsLoadingMoreMessages(false);
-          return;
-        }
-        
-        // 转换消息格式
-        const fetchedMessages: Message[] = messageList.map(item => ({
-          messageId: item.messageId,
-          roomId: item.roomId || roomId,
-          userId: item.userId,
-          userName: item.userName || item.nickname || item.username || '未知用户',
-          quotedMessageId: item.replyToMessageId || item.replyTo?.messageId,
-          type: item.type as Message['type'],
-          text: item.text || '',
-          time: item.time || item.createdTime || new Date().toISOString(),
-          isOwn: item.isOwn !== undefined ? item.isOwn : (item.userId === user.userId),
-        }));
-        
-        // 按时间排序（从旧到新）
-        fetchedMessages.sort((a, b) => {
-          const timeA = new Date(a.time).getTime();
-          const timeB = new Date(b.time).getTime();
-          return timeA - timeB;
-        });
-        
-        // 将新消息插入到现有消息前面
-        setRoomMessages(prev => ({
-          ...prev,
-          [roomId]: [...fetchedMessages, ...currentMessages],
-        }));
-        
-        // 更新是否还有更多消息的状态
-        setHasMoreMessages(prev => ({
-          ...prev,
-          [roomId]: response.data?.hasMore ?? true,
-        }));
-        
-        console.log(`[useMessages] 加载了 ${fetchedMessages.length} 条历史消息`);
+  const fetchMoreMessages = useCallback(
+    async (roomId: string) => {
+      if (!user || roomId === "home" || isLoadingMoreMessages) {
+        return;
       }
-    } catch (err) {
-      console.error('[useMessages] 加载更多消息失败:', err);
-      onError?.('加载失败', '无法加载更多历史消息', 2);
-    } finally {
-      setIsLoadingMoreMessages(false);
-    }
-  }, [user, roomMessages, hasMoreMessages, isLoadingMoreMessages, onError]);
+
+      const currentMessages = roomMessages[roomId] || [];
+      if (currentMessages.length === 0) {
+        console.log("[useMessages] 没有消息，无法加载更多");
+        return;
+      }
+
+      // 检查是否还有更多消息
+      if (hasMoreMessages[roomId] === false) {
+        console.log("[useMessages] 没有更多历史消息了");
+        return;
+      }
+
+      // 获取最早的消息ID作为游标
+      const oldestMessageId = currentMessages[0].messageId;
+      console.log(
+        `[useMessages] 加载房间 ${roomId} 更多历史消息，游标: ${oldestMessageId}`,
+      );
+
+      setIsLoadingMoreMessages(true);
+      try {
+        const response = await messageService.getMessageHistory(roomId, {
+          before: oldestMessageId,
+          pageSize: 50,
+        });
+
+        if (response.code === 200 && response.data) {
+          const messageList =
+            response.data.messages || response.data.list || [];
+
+          if (!Array.isArray(messageList) || messageList.length === 0) {
+            console.log("[useMessages] 没有更多历史消息");
+            setHasMoreMessages((prev) => ({ ...prev, [roomId]: false }));
+            setIsLoadingMoreMessages(false);
+            return;
+          }
+
+          // 转换消息格式
+          const fetchedMessages: Message[] = messageList.map((item) => ({
+            messageId: item.messageId,
+            roomId: item.roomId || roomId,
+            userId: item.userId,
+            userName:
+              item.userName || item.nickname || item.username || "未知用户",
+            quotedMessageId: item.replyToMessageId || item.replyTo?.messageId,
+            type: item.type as Message["type"],
+            text: item.text || "",
+            time: item.time || item.createdTime || new Date().toISOString(),
+            isOwn:
+              item.isOwn !== undefined
+                ? item.isOwn
+                : item.userId === user.userId,
+          }));
+
+          // 按时间排序（从旧到新）
+          fetchedMessages.sort((a, b) => {
+            const timeA = new Date(a.time).getTime();
+            const timeB = new Date(b.time).getTime();
+            return timeA - timeB;
+          });
+
+          // 将新消息插入到现有消息前面
+          setRoomMessages((prev) => ({
+            ...prev,
+            [roomId]: [...fetchedMessages, ...currentMessages],
+          }));
+
+          // 更新是否还有更多消息的状态
+          setHasMoreMessages((prev) => ({
+            ...prev,
+            [roomId]: response.data?.hasMore ?? true,
+          }));
+
+          console.log(
+            `[useMessages] 加载了 ${fetchedMessages.length} 条历史消息`,
+          );
+        }
+      } catch (err) {
+        console.error("[useMessages] 加载更多消息失败:", err);
+        onError?.("加载失败", "无法加载更多历史消息", 2);
+      } finally {
+        setIsLoadingMoreMessages(false);
+      }
+    },
+    [user, roomMessages, hasMoreMessages, isLoadingMoreMessages, onError],
+  );
 
   // 清空房间缓存，用于强制刷新
   const clearRoomCache = useCallback((roomId: string) => {
     console.log(`[useMessages] 清空房间 ${roomId} 的缓存`);
     loadedRoomsRef.current.delete(roomId);
-    setHasMoreMessages(prev => ({ ...prev, [roomId]: true }));
+    setHasMoreMessages((prev) => ({ ...prev, [roomId]: true }));
   }, []);
 
   return {

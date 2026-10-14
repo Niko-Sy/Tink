@@ -84,7 +84,7 @@ export const sanitizeUsername = (username: string): string => {
   return username
     .trim()
     // 移除控制字符
-    .replace(/[\x00-\x1F\x7F-\x9F]/g, '')
+    .split('').filter(char => { const code = char.charCodeAt(0); return code > 31 && (code < 127 || code > 159); }).join('')
     // 移除零宽字符
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
     // 限制为字母、数字、中文、下划线和连字符

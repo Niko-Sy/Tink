@@ -25,3 +25,7 @@ dist-ssr
 
 # markdown files
 
+
+# Browser-test artifacts
+test-results/
+playwright-report/

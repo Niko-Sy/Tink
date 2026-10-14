@@ -6,7 +6,7 @@
 // ============ 应用基础配置 ============
 
 /** 主页房间ID（系统默认房间） */
-export const HOME_ROOM_ID = '100000001';
+export const HOME_ROOM_ID = 'home';
 
 /** 默认头像URL */
 export const DEFAULT_AVATAR_URL = 'https://www.tastywhut.site/pic/avatars/DefaultAvatar.png';

@@ -1,15 +1,17 @@
-import { useState } from 'react';
+import { useState } from "react";
 
-export interface ContextMenuState {
+export interface ContextMenuState<T> {
   x: number;
   y: number;
-  data?: any;
+  data?: T;
 }
 
-export const useContextMenu = () => {
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+export const useContextMenu = <T>() => {
+  const [contextMenu, setContextMenu] = useState<ContextMenuState<T> | null>(
+    null,
+  );
 
-  const openContextMenu = (x: number, y: number, data?: any) => {
+  const openContextMenu = (x: number, y: number, data?: T) => {
     setContextMenu({ x, y, data });
   };
 
@@ -17,7 +19,7 @@ export const useContextMenu = () => {
     setContextMenu(null);
   };
 
-  const handleContextMenu = (e: React.MouseEvent, data?: any) => {
+  const handleContextMenu = (e: React.MouseEvent, data?: T) => {
     e.preventDefault();
     e.stopPropagation();
     openContextMenu(e.clientX, e.clientY, data);

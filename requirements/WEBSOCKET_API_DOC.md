@@ -1,3 +1,7 @@
+> **当前运行配置更新：** 功能开关从config.yaml的social段读取（friends/direct_messages/room_invitations），来源从server.allowed_origins读取；正常启动不检查迁移版本，也不要求env文件。下面早期环境变量开关说明为历史版本；鉴权与业务协议保持不变。
+
+> **2026-10-13 第三批更新：** 建连改为一次性票据，长期JWT URL已移除；邀请事件与事务入群已启用。群聊历史示例仅供协议背景，以本文件第三批说明和专项API文档为准。
+
 # WebSocket API 接口文档
 
 ## 概述
@@ -20,26 +24,28 @@
 **开发环境:**
 
 ```
-ws://localhost:8080/ws?token=YOUR_JWT_TOKEN
+ws://localhost:8080/ws?ticket=ONE_TIME_TICKET
 ```
 
 **生产环境:**
 
 ```
-wss://your-domain.com/ws?token=YOUR_JWT_TOKEN
+wss://your-domain.com/ws?ticket=ONE_TIME_TICKET
 ```
 
 ### 1.2 连接参数
 
 | 参数  | 类型   | 必需 | 说明                           |
 | ----- | ------ | ---- | ------------------------------ |
-| token | string | 是   | JWT 认证令牌，通过登录接口获取 |
+| ticket | string | 是 | access 鉴权POST /api/v1/auth/ws-ticket取得的60秒内单次票据 |
 
 ### 1.3 连接示例 (JavaScript)
 
 ```javascript
 const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
-const ws = new WebSocket(`ws://localhost:8080/ws?token=${token}`);
+const result = await fetch("http://localhost:8080/api/v1/auth/ws-ticket", {method:"POST",headers:{Authorization:`Bearer ${token}`}});
+const {data} = await result.json();
+const ws = new WebSocket(`ws://localhost:8080/ws?ticket=${encodeURIComponent(data.ticket)}`);
 
 ws.onopen = () => {
     console.log('WebSocket 连接成功');
@@ -49,7 +55,7 @@ ws.onopen = () => {
 ws.onmessage = (event) => {
     try {
         const message = JSON.parse(event.data);
-        console.log('收到消息:', message);
+        console.log('收到消息类型:', message.type);
         handleMessage(message);
     } catch (error) {
         console.error('解析消息失败:', error);
@@ -68,7 +74,7 @@ ws.onclose = (event) => {
 
 ### 1.4 连接生命周期
 
-1. **连接建立**: 客户端发起 WebSocket 连接请求，携带 JWT token
+1. **连接建立**: 客户端发起 WebSocket 连接请求，携带一次性票据
 2. **身份验证**: 服务器验证 token 有效性
 3. **自动入室**: 验证成功后，服务器自动将用户加入其所有聊天室
 4. **在线标记**: 用户状态自动设置为在线
@@ -774,8 +780,10 @@ class WebSocketClient {
         this.maxReconnectAttempts = 5;
     }
 
-    connect() {
-        this.ws = new WebSocket(`ws://localhost:8080/ws?token=${this.token}`);
+    async connect() {
+        const result = await fetch("http://localhost:8080/api/v1/auth/ws-ticket", {method:"POST",headers:{Authorization:`Bearer ${this.token}`}});
+        const {data} = await result.json();
+        this.ws = new WebSocket(`ws://localhost:8080/ws?ticket=${encodeURIComponent(data.ticket)}`);
     
         this.ws.onopen = () => {
             console.log('WebSocket 连接成功');
@@ -1067,3 +1075,19 @@ wsClient.sendTyping('100000001', true);
     }
 }
 ```
+
+## 2026-10-12 第一批实现更新
+
+实际好友与多连接事件契约见 `../../Tink-Backend/SOCIAL_API.md`。SocialProvider监听friend_request、friendship、friend_presence及connected，重新查询事实；页面激活补查，WS不可用且页面可见时30秒恢复轮询。room订阅确认不代表真实成员关系变化；directMessages和roomInvitations本批未启用。
+
+## 2026-10-12 第二批更新
+
+S4～S5已接入direct协议，实际契约见 `../../Tink-Backend/DIRECT_API.md`。私信独立导航与/direct路由，WS等ACK5秒，超时/断线用原UUID回退HTTP，业务拒绝不回退；按服务端版本合并，通过changes恢复旧消息编辑/撤回。已读仅表示本人读位置，不展示对方回执。
+
+## 2026-10-13 第三批 S6～S8
+
+邀请契约见 [INVITATION_API.md](../../Tink-Backend/INVITATION_API.md)。invitation/created、updated 发双方全部连接；room_invitations/updated 提示授权管理者刷新且无留言。room/added、removed 同步本人真实房间列表；room_member 的 joined/left/kicked 保留群协议，只有提交后真实成员变更触发，订阅不改变成员数。重连、激活及可见离线面板轮询恢复数据库事实。
+
+访问令牌仅用于HTTP Bearer鉴权与申请POST /api/v1/auth/ws-ticket；票据最多60秒、单次使用、不超过access剩余寿命。重连每次申请新票据；access到期服务器关闭连接。WS/CORS来源由ALLOWED_ORIGINS白名单控制，缺失Origin的原生客户端仍需有效票据。票据、JWT、消息正文、邀请留言不得记录日志。
+
+HTTP刷新POST /api/v1/auth/refresh（Header GET兼容）仅使用refresh，返回token/refreshToken/expiresIn，旧无用途令牌需重新登录。DIRECT_MESSAGES_ENABLED和ROOM_INVITATIONS_ENABLED正常默认false，隔离联调true；关闭写能力不取消授权历史读取。单实例边界不变。
